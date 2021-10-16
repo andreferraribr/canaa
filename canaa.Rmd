@@ -1,0 +1,44 @@
+---
+title: "canna"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: fill
+runtime: shiny
+---
+
+
+```{r}
+library(flexdashboard)
+library(readxl)
+library(ggplot2)
+library(stringr)
+library(plotly)
+library(DT)
+library(knitr)
+library(shiny)
+# library(shinyWidgets)
+library(lubridate)
+library(tidyverse)
+library(janitor)
+library(scales)
+library(readr)
+library(highcharter)
+# library(googledrive)
+library(googlesheets4)
+```
+
+
+```{r cars}
+dados<- read_delim("MICRODADOS_OCORRENCIAS.csv", 
+    delim = ";", escape_double = FALSE, locale = locale(encoding = "latin1"), 
+    trim_ws = TRUE)
+
+```
+
+```{r}
+
+datatable(dados %>% filter(Municipio == "VITORIA") %>% group_by( TipoIncidente) %>% count())
+
+```
+
