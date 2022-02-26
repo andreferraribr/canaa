@@ -29,16 +29,40 @@ library(googlesheets4)
 ```
 
 
-```{r cars}
+```{r cars, include=FALSE}
 dados<- read_delim("MICRODADOS_OCORRENCIAS.csv", 
     delim = ";", escape_double = FALSE, locale = locale(encoding = "latin1"), 
     trim_ws = TRUE)
 
+dados <- dados %>%mutate(Hora = if_else(Hora == "Indeterminada","01:00:00", Hora))
+
+dados <- dados  %>%  mutate(hora = str_sub(Hora, 1L,2L))
+
+dados_react <- reactive( dados %>% filter(hora >= min (input$hora) &  hora < max (input$hora)+1 ,Municipio == input$cidade))
+
 ```
+
+Column {.sidebar}
+-----------------------------------------------------------------------
+
+
+```{r}
+sliderInput("hora","hora", min = 0, max = 23, value = c(00,23))
+
+selectInput("cidade","cidade", choices = unique(dados$Municipio), selected = "SANTA TERESA")
+```
+
+
+Row
+-----------------------------------------------------------------------
+### dados
 
 ```{r}
 
-datatable(dados %>% filter(Municipio == "VITORIA") %>% group_by( TipoIncidente) %>% count())
+renderDT(datatable(dados_react() %>% group_by( TipoIncidente) %>% count()))
 
 ```
+
+
+
 
