@@ -1,0 +1,154 @@
+---
+title: "siafi"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: fill
+runtime: shiny
+---
+
+
+```{r include=FALSE}
+library(flexdashboard)
+library(readxl)
+library(ggplot2)
+library(stringr)
+library(plotly)
+library(DT)
+library(knitr)
+library(shiny)
+# library(shinyWidgets)
+library(lubridate)
+library(tidyverse)
+library(janitor)
+library(scales)
+library(readr)
+library(highcharter)
+# library(googledrive)
+library(googlesheets4)
+library(esquisse)
+library(ggeasy)
+library(ggx)
+```
+
+```{r negar %in%}
+# https://www.r-bloggers.com/the-notin-operator/
+'%!in%' <- Negate('%in%')
+```
+
+```{r eval=FALSE, include=FALSE}
+
+
+militares <- read_excel("202112_militares.xlsx")
+civis <- read_excel("202112_civis.xlsx")
+bacen <- read_excel("202112_bacen.xlsx")
+
+
+
+militares <- militares %>% filter(NOME %in% ordenador$`UGE - Ordenador - Responsável Nome`)
+
+civis <- civis %>% filter(NOME %in% ordenador$`UGE - Ordenador - Responsável Nome`)
+
+
+bacen <- baceno %>% filter(NOME %in% ordenador$`UGE - Ordenador - Responsável Nome`)
+
+servidores <- rbind(militares, civis, bacen)
+
+write_csv(servidores, "servidores.csv")
+
+
+
+
+
+
+
+```
+```{r eval=FALSE, include=FALSE}
+militares_cadastro <- read_excel("202112_militares_cadastro.xlsx")
+civis_cadastro <- read_excel("202112_civis_cadastro.xlsx")
+bacen_cadastro <- read_excel("202112_bacen_cadastro.xlsx")
+
+
+
+militares_cadastro <- militares_cadastro %>% filter(NOME %in% ordenador$`UGE - Ordenador - Responsável Nome`)
+
+civis_cadastro <- civis_cadastro %>% filter(NOME %in% ordenador$`UGE - Ordenador - Responsável Nome`)
+
+
+bacen_cadastro <- bacen_cadastro %>% filter(NOME %in% ordenador$`UGE - Ordenador - Responsável Nome`)
+
+cadastro <- rbind(militares_cadastro, civis_cadastro, bacen_cadastro)
+
+write_csv(cadastro, "cadastro.csv")
+
+```
+
+
+```{r}
+ordenador <- read_excel("ug_202112.xlsx",     skip = 5)
+
+ordenador <- ordenador %>% mutate(cpf2 = str_c("***",str_sub(`UGE - Ordenador - Responsável Número`,start = 4L, end = -6L),".",str_sub(`UGE - Ordenador - Responsável Número`,start = 7L, end = -3L)))
+
+
+ug_conta <- read_excel("ug_conta.xlsx", skip = 7) %>% filter(ATIVO != 0 & `PASSIVO E PATRIMONIO LIQUIDO` != 0)
+ug_orc <- read_excel("ug_receita_despesa.xlsx",     skip = 7)
+
+servidores <- read_csv("servidores.csv")
+
+servidores <- servidores %>% mutate (cpf_nome = str_c(CPF,NOME))
+
+
+cadastro <- read_csv("cadastro.csv")
+
+cadastro <- cadastro %>% mutate (cpf_nome = str_c(CPF,NOME))
+
+
+cadastro_funcao <- cadastro %>% filter(FUNCAO %!in% c("Sem informação", NA)) %>% select(NOME, FUNCAO, SIGLA_FUNCAO, NIVEL_FUNCAO)
+cadastro_cargo <- cadastro %>% filter(FUNCAO == "Sem informação") %>% select ( -FUNCAO,- SIGLA_FUNCAO, -NIVEL_FUNCAO)
+cadastro_servidor <- left_join(cadastro_cargo,cadastro_funcao)
+
+not_found <- ordenador %>% filter (`UGE - Ordenador - Responsável Nome` %!in% servidores$NOME)
+```
+
+
+```{r eval=FALSE, include=FALSE}
+siafi_usuarios <- read_csv("siafidadosusuarios2.csv")
+
+
+names(siafi_usuarios) <- c("CPF", "usuario", "ug_code", "ug", "orgao_code", "orgao", "nivel", "situacao")
+
+
+siafi_usuarios <- siafi_usuarios %>% mutate(ug_code = as.double(ug_code))
+
+```
+```{r eval=FALSE, include=FALSE}
+siafi_ugs <- read_csv("siafirelatoriounidadesgestoras.csv")
+
+names(siafi_ugs) <- c( "ug_code", "ug","cnpj_ug","UF", "orgao_code", "orgao", "cnpj-orgao","funcao", "ativo", "cep", "endereco")
+
+siafi_ugs <- siafi_ugs %>% mutate(ug_code = as.double(ug_code))
+
+
+siafi <- left_join ( siafi_usuarios %>% select(usuario,ug_code,nivel, situacao), siafi_ugs, c ("ug_code"="ug_code"))
+```
+
+
+```{r eval=FALSE, include=FALSE}
+retencao_federal <- read_excel("retencao_federal.xlsx")
+
+retencao_federal <- retencao_federal %>% mutate(ug_code = as.double(ug_code))
+
+retencao_federal_ug <- retencao_federal %>% group_by(ug_code) %>% summarise(valor = sum(valor))
+
+
+datatable( retencao_federal %>% group_by(ug, ug_code) %>% count())
+```
+Row
+-----------------------------------------------------------------------
+### orgaos
+
+
+
+
+
+

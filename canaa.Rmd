@@ -27,18 +27,37 @@ library(highcharter)
 # library(googledrive)
 library(googlesheets4)
 ```
+```{r}
+vitimas <- read_excel("vitimas.xlsx")
+
+vitimas <- vitimas %>% mutate(TipoIncidente = if_else(startsWith(TipoIncidente, "LES"), "LESÃO CORPORAL SEGUIDA DE MORTE", TipoIncidente))
+```
 
 
 ```{r cars, include=FALSE}
 dados<- read_delim("MICRODADOS_OCORRENCIAS.csv", 
     delim = ";", escape_double = FALSE, locale = locale(encoding = "latin1"), 
     trim_ws = TRUE)
+dados <- dados %>% select(Data, Hora, TipoIncidente, Municipio, Bairro)
 
-dados <- dados %>%mutate(Hora = if_else(Hora == "Indeterminada","01:00:00", Hora))
+dados_homicidio <- vitimas %>% select(Data, Hora, TipoIncidente, Municipio, Bairro) 
+
+dados <- rbind(dados, dados_homicidio)
+
+dados <- dados %>%mutate(Hora = if_else(Hora == "Indeterminada","00:00:00", Hora))
 
 dados <- dados  %>%  mutate(hora = str_sub(Hora, 1L,2L))
 
-dados_react <- reactive( dados %>% filter(hora >= min (input$hora) &  hora < max (input$hora)+1 ,Municipio == input$cidade))
+dados_2 <- dados %>% mutate (ano = year (Data)) %>% filter(ano>2017)
+
+
+
+# dados <- dados %>% filter(TipoIncidente == "ROUBO: EM RESIDÊNCIA/CONDOMÍNIO")
+
+# dados_react <- reactive( dados %>% filter(Municipio == input$cidade, TipoIncidente == input$tipo))
+
+dados_react <- reactive( dados_2 %>% filter(Municipio == input$cidade, TipoIncidente  %in% c(input$tipo)))
+
 
 ```
 
@@ -47,9 +66,11 @@ Column {.sidebar}
 
 
 ```{r}
-sliderInput("hora","hora", min = 0, max = 23, value = c(00,23))
+# sliderInput("hora","hora", min = 0, max = 23, value = c(00,23))
 
 selectInput("cidade","cidade", choices = unique(dados$Municipio), selected = "SANTA TERESA")
+
+checkboxGroupInput("tipo","Tipo de Crime",unique(dados$TipoIncidente), selected = unique(dados$TipoIncidente) )
 ```
 
 
@@ -66,3 +87,33 @@ renderDT(datatable(dados_react() %>% group_by( TipoIncidente) %>% count()))
 
 
 
+Row
+-----------------------------------------------------------------------
+### plot
+```{r}
+renderPlotly(
+  
+  ggplot(dados_react(), aes(year(Data, TipoIncidente), fill = TipoIncidente)) + geom_col()
+  
+
+  
+)
+```
+
+
+### cidade
+```{r}
+
+perigosas  <- dados %>% group_by(Municipio) %>% summarise(total = n()) %>% mutate (Municipio = fct_reorder(Municipio,total))
+ # head(arrange(perigosas,-total),10)
+
+renderPlotly(
+
+    ggplot(head(arrange(perigosas,-total),10), aes(x=Municipio, y=total)) +
+    geom_bar(stat="identity", fill="#f68060", alpha=.6, width=.4) +
+    coord_flip() +
+    xlab("") +
+    theme_bw()
+
+)
+```
