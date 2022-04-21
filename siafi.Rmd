@@ -8,6 +8,12 @@ runtime: shiny
 ---
 
 
+```{r}
+options(scipen=999)
+options(digits=2)
+```
+
+
 ```{r include=FALSE}
 library(flexdashboard)
 library(readxl)
@@ -36,25 +42,62 @@ library(ggx)
 '%!in%' <- Negate('%in%')
 ```
 
+```{r}
+tabela_reais = function (df,coluna = NULL) {
+      datatable((df)%>%
+  # "row" para o total aparecer na linha, ou seja, totalizar os valores de uma coluna
+  adorn_totals("row") ,
+      filter = 'top', 
+      rownames = FALSE,
+      extensions = 'Buttons',
+      options = list( 
+                  # order = list (df[(length(df))], 'desc'),
+                  dom = "Blfrtip",
+                  buttons = 
+                    list("copy", list(
+                      extend = "collection",
+                      buttons = c("csv", "excel", "pdf"),
+                      text = "Download" ) ),
+                  lengthMenu = list( c(-1, 5, 10,20),
+                                     c( "tudo",5, 10, 20)),
+                  pageLength = -1 )
+      )%>%
+  formatRound(
+  # formatar apenas as colunas numericas.
+  # sapply para identificar as colunas numericas e combinar com o parametro COLUNA
+    # ((ncol(df %>% select_if(is.character))+1):(ncol(df )+1)),
+    # http://datamining.togaware.com/survivor/Remove_Non_Numeric.html
+    (c(colnames(df[,sapply(df, is.numeric)]), coluna)),
+  digits = 2,
+  interval = 3,
+  mark = ".",
+  dec.mark = ","
+) 
+}
+```
+Importar remuneracao dos servidores, filtrar apenas os ordenadores de despesa e salvar arquivo para deixar o processamento mais leve
+
+Tarefa: criar funcao para importar, criar variavel cpf_nome
+
 ```{r eval=FALSE, include=FALSE}
 
 
-militares <- read_excel("202112_militares.xlsx")
-civis <- read_excel("202112_civis.xlsx")
-bacen <- read_excel("202112_bacen.xlsx")
+militares <- read_excel("202112_militares.xlsx")%>% mutate (cpf_nome = str_c(CPF,NOME))
+civis <- read_excel("202112_civis.xlsx")%>% mutate (cpf_nome = str_c(CPF,NOME))
+bacen <- read_excel("202112_bacen.xlsx")%>% mutate (cpf_nome = str_c(CPF,NOME))
 
 
 
-militares <- militares %>% filter(NOME %in% ordenador$`UGE - Ordenador - Responsável Nome`)
+militares <- militares %>% filter(cpf_nome %in% ordenador$cpf_nome)
 
-civis <- civis %>% filter(NOME %in% ordenador$`UGE - Ordenador - Responsável Nome`)
+civis <- civis %>% filter(cpf_nome %in% ordenador$cpf_nome)
 
 
-bacen <- baceno %>% filter(NOME %in% ordenador$`UGE - Ordenador - Responsável Nome`)
+bacen <- bacen %>% filter(cpf_nome %in% ordenador$cpf_nome)
 
 servidores <- rbind(militares, civis, bacen)
 
-write_csv(servidores, "servidores.csv")
+write_csv(servidores, "servidores_202112.csv")
 
 
 
@@ -63,52 +106,123 @@ write_csv(servidores, "servidores.csv")
 
 
 ```
+
+Importar cadastro dos servidores, filtrar apenas os ordenadores de despesa e salvar arquivo para deixar o processamento mais leve
+
+
 ```{r eval=FALSE, include=FALSE}
-militares_cadastro <- read_excel("202112_militares_cadastro.xlsx")
-civis_cadastro <- read_excel("202112_civis_cadastro.xlsx")
-bacen_cadastro <- read_excel("202112_bacen_cadastro.xlsx")
 
 
 
-militares_cadastro <- militares_cadastro %>% filter(NOME %in% ordenador$`UGE - Ordenador - Responsável Nome`)
+militares_cadastro <- read_excel("202112_militares_cadastro.xlsx")%>% mutate (cpf_nome = str_c(CPF,NOME))
+civis_cadastro <- read_excel("202112_civis_cadastro.xlsx")%>% mutate (cpf_nome = str_c(CPF,NOME))
+bacen_cadastro <- read_excel("202112_bacen_cadastro.xlsx")%>% mutate (cpf_nome = str_c(CPF,NOME))
 
-civis_cadastro <- civis_cadastro %>% filter(NOME %in% ordenador$`UGE - Ordenador - Responsável Nome`)
 
 
-bacen_cadastro <- bacen_cadastro %>% filter(NOME %in% ordenador$`UGE - Ordenador - Responsável Nome`)
+militares_cadastro <- militares_cadastro %>% filter(cpf_nome %in% ordenador$cpf_nome)
+
+civis_cadastro <- civis_cadastro%>% filter(cpf_nome %in% ordenador$cpf_nome)
+
+
+bacen_cadastro <- bacen_cadastro %>% filter(cpf_nome %in% ordenador$cpf_nome)
 
 cadastro <- rbind(militares_cadastro, civis_cadastro, bacen_cadastro)
 
-write_csv(cadastro, "cadastro.csv")
+write_csv(cadastro, "cadastro_202112.csv")
 
 ```
 
 
+
 ```{r}
-ordenador <- read_excel("ug_202112.xlsx",     skip = 5)
-
-ordenador <- ordenador %>% mutate(cpf2 = str_c("***",str_sub(`UGE - Ordenador - Responsável Número`,start = 4L, end = -6L),".",str_sub(`UGE - Ordenador - Responsável Número`,start = 7L, end = -3L)))
+servidores <- read_csv("servidores_202112.csv")
 
 
-ug_conta <- read_excel("ug_conta.xlsx", skip = 7) %>% filter(ATIVO != 0 & `PASSIVO E PATRIMONIO LIQUIDO` != 0)
-ug_orc <- read_excel("ug_receita_despesa.xlsx",     skip = 7)
 
-servidores <- read_csv("servidores.csv")
-
-servidores <- servidores %>% mutate (cpf_nome = str_c(CPF,NOME))
+servidores <- servidores %>% select(cpf_nome,`REMUNERAÇÃO BÁSICA BRUTA (R$)`,`REMUNERAÇÃO BÁSICA BRUTA (U$)`) %>% mutate(remuneracao =`REMUNERAÇÃO BÁSICA BRUTA (R$)`+ 5*`REMUNERAÇÃO BÁSICA BRUTA (U$)` )
 
 
-cadastro <- read_csv("cadastro.csv")
+cadastro <- read_csv("cadastro_202112.csv")
 
-cadastro <- cadastro %>% mutate (cpf_nome = str_c(CPF,NOME))
+
+
+multiplos_vinculos <- (cadastro %>% group_by(cpf_nome) %>% count()) %>% filter (n ==3)
+
+servidores_multiplos_vinculos <- cadastro %>% filter(cpf_nome %in% multiplos_vinculos$cpf_nome)
+
+datatable(servidores_multiplos_vinculos %>% group_by(FUNCAO) %>% count())
 
 
 cadastro_funcao <- cadastro %>% filter(FUNCAO %!in% c("Sem informação", NA)) %>% select(NOME, FUNCAO, SIGLA_FUNCAO, NIVEL_FUNCAO)
 cadastro_cargo <- cadastro %>% filter(FUNCAO == "Sem informação") %>% select ( -FUNCAO,- SIGLA_FUNCAO, -NIVEL_FUNCAO)
-cadastro_servidor <- left_join(cadastro_cargo,cadastro_funcao)
+cadastro_servidor <- left_join(cadastro_cargo,cadastro_funcao) %>% select(cpf_nome,NOME,DESCRICAO_CARGO,UORG_LOTACAO,ORG_LOTACAO, TIPO_VINCULO, SITUACAO_VINCULO ,SIGLA_FUNCAO,NIVEL_FUNCAO,FUNCAO)
 
-not_found <- ordenador %>% filter (`UGE - Ordenador - Responsável Nome` %!in% servidores$NOME)
+cadastro_servidor <-  cadastro_servidor %>% mutate(cpf_nome_lotacao = str_c(cpf_nome,"-",UORG_LOTACAO))
+
 ```
+
+
+Tarefa: alterar consulta da tabela de ordenadores para trazer apenas ug e ordenador.
+
+```{r}
+ordenador <- read_excel("ug_202112.xlsx",     skip = 5)
+
+ordenador <- ordenador %>% mutate(CPF = str_c("***.",str_sub(`UGE - Ordenador - Responsável Número`,start = 4L, end = -6L),".",str_sub(`UGE - Ordenador - Responsável Número`,start = 7L, end = -3L),"-**"))
+
+ordenador <- ordenador  %>% mutate (cpf_nome = str_c(CPF,`UGE - Ordenador - Responsável Nome`))
+
+ordenador <- ordenador %>% group_by(`UGE - Ordenador - Responsável Nome`,cpf_nome,`UG Executora Código`,`UG Executora Nome`,`UG Executora Nome Reduzido`,`UGE - Município Nome`,`UGE - UF Sigla`,`UGE - UF Nome`) %>% count()
+
+
+
+
+```
+
+
+
+Tarefa: criar relatorio com ug, orgao, poder, ativo, passivo, receita e despesa
+
+```{r}
+ug_conta <- read_excel("ug_conta.xlsx", skip = 7) %>% filter(ATIVO != 0 & `PASSIVO E PATRIMONIO LIQUIDO` != 0) 
+ug_conta[is.na(ug_conta)] <- 0
+
+ug_orc <- read_excel("ug_receita_despesa.xlsx",     skip = 7)
+ug_orc <- ug_orc %>% select(-`Item Informação`)
+ug_orc <- ug_orc %>% mutate_at(vars(c(`RECEITA ORCAMENTARIA (BRUTA)`,`PAGAMENTOS TOTAIS (EXERCICIO E RAP)`)), ~replace_na(.,0))
+
+ug_conta_org <- full_join(ug_conta,ug_orc)
+
+
+
+```
+
+Tarefa: mesclar ou vincular tabelas
+Eliminar duplicidade de vinculos na tabela cadastro
+
+```{r}
+ugs <- left_join(ug_conta_org, ordenador %>% select(-`UG Executora Nome`))
+ugs <- left_join(ugs, ug_conta %>% select(-`UG Executora Nome`))
+
+ugs <- left_join(ugs, servidores)
+
+ugs <- left_join(ugs, cadastro_servidor )
+
+funcao <- servidores_multiplos_vinculos %>% group_by(cpf_nome,FUNCAO, UORG_LOTACAO) %>% count() %>%  mutate(cpf_nome_lotacao = str_c(cpf_nome,"-",UORG_LOTACAO))
+
+funcao_sem_info <- funcao %>% filter(FUNCAO == "Sem informação")
+
+
+# ugs <- ugs %>% mutate (ug_code = as.numeric(`UG Executora Código`))
+# 
+# 
+# 
+# ugs <- left_join(ugs, siafi_ugs)
+
+datatable(ugs %>% filter(is.na(ATIVO)) %>% group_by(orgao, `UG Executora Nome`,ATIVO,`PAGAMENTOS TOTAIS (EXERCICIO E RAP)`) %>% count())
+datatable(cadastro_cargo %>% filter(JORNADA_DE_TRABALHO != c("20 HORAS SEMANAIS","24 HORAS SEMANAIS"), !startsWith(DESCRICAO_CARGO, "PROF") ) %>% group_by(NOME)  %>% count())
+```
+
 
 
 ```{r eval=FALSE, include=FALSE}
