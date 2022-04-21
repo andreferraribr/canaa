@@ -145,9 +145,19 @@ servidores <- servidores %>% select(cpf_nome,`REMUNERAÇÃO BÁSICA BRUTA (R$)`,
 
 cadastro <- read_csv("cadastro_202112.csv")
 
+cadastro <- cadastro %>% mutate(cpf_nome_uorg = str_c(cpf_nome, UORG_EXERCICIO))
+
 
 
 multiplos_vinculos <- (cadastro %>% group_by(cpf_nome) %>% count()) %>% filter (n ==3)
+
+multiplos_vinculos_filtro <- (cadastro %>% group_by(cpf_nome, UORG_EXERCICIO) %>% count()) %>% filter (cpf_nome %in% multiplos_vinculos$cpf_nome, n ==1 )
+
+multiplos_vinculos_filtro <- multiplos_vinculos_filtro %>% mutate(cpf_nome_uorg = str_c(cpf_nome, UORG_EXERCICIO))
+
+cadastro <- cadastro %>% filter(cpf_nome_uorg %!in% multiplos_vinculos_filtro$cpf_nome_uorg)
+
+# datatable(cadastro %>% group_by(cpf_nome_uorg,JORNADA_DE_TRABALHO) %>% summarise(max(JORNADA_DE_TRABALHO)) %>% count() %>% filter(n==2))
 
 servidores_multiplos_vinculos <- cadastro %>% filter(cpf_nome %in% multiplos_vinculos$cpf_nome)
 
@@ -160,6 +170,17 @@ cadastro_servidor <- left_join(cadastro_cargo,cadastro_funcao) %>% select(cpf_no
 
 cadastro_servidor <-  cadastro_servidor %>% mutate(cpf_nome_lotacao = str_c(cpf_nome,"-",UORG_LOTACAO))
 
+dupla_jornada_filtro <- (cadastro %>% group_by(cpf_nome_uorg,JORNADA_DE_TRABALHO) %>% summarise(max(JORNADA_DE_TRABALHO)) %>% count() %>% filter(n==2))
+
+dupla_jornada <- cadastro %>% filter(cpf_nome_uorg %in% dupla_jornada_filtro$cpf_nome_uorg) %>% select(cpf_nome_uorg,DESCRICAO_CARGO,FUNCAO,UORG_EXERCICIO,JORNADA_DE_TRABALHO) %>% mutate(jornada = case_when(
+  JORNADA_DE_TRABALHO == "20 HORAS SEMANAIS" ~ 20,
+  JORNADA_DE_TRABALHO == "40 HORAS SEMANAIS" ~ 40,
+  JORNADA_DE_TRABALHO == "44 HORAS SEMANAIS" ~ 44,
+  JORNADA_DE_TRABALHO == "DEDICACAO EXCLUSIVA" ~ 60
+))
+
+
+jornada <- dupla_jornada %>% group_by(cpf_nome_uorg) %>% summarise(JORNADA_DE_TRABALHO= min(JORNADA_DE_TRABALHO)) %>% mutate(cpf_nome_uorg_jornada = str_c(cpf_nome_uorg,JORNADA_DE_TRABALHO))
 ```
 
 
@@ -191,7 +212,7 @@ ug_orc <- read_excel("ug_receita_despesa.xlsx",     skip = 7)
 ug_orc <- ug_orc %>% select(-`Item Informação`)
 ug_orc <- ug_orc %>% mutate_at(vars(c(`RECEITA ORCAMENTARIA (BRUTA)`,`PAGAMENTOS TOTAIS (EXERCICIO E RAP)`)), ~replace_na(.,0))
 
-ug_conta_org <- full_join(ug_conta,ug_orc)
+ug_conta_org <- full_join(ug_conta,ug_orc, by = "UG Executora Código")
 
 
 
@@ -219,7 +240,7 @@ funcao_sem_info <- funcao %>% filter(FUNCAO == "Sem informação")
 # 
 # ugs <- left_join(ugs, siafi_ugs)
 
-datatable(ugs %>% filter(is.na(ATIVO)) %>% group_by(orgao, `UG Executora Nome`,ATIVO,`PAGAMENTOS TOTAIS (EXERCICIO E RAP)`) %>% count())
+# datatable(ugs %>% filter(is.na(ATIVO)) %>% group_by(orgao, `UG Executora Nome`,ATIVO,`PAGAMENTOS TOTAIS (EXERCICIO E RAP)`) %>% count())
 datatable(cadastro_cargo %>% filter(JORNADA_DE_TRABALHO != c("20 HORAS SEMANAIS","24 HORAS SEMANAIS"), !startsWith(DESCRICAO_CARGO, "PROF") ) %>% group_by(NOME)  %>% count())
 ```
 
