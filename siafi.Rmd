@@ -183,7 +183,7 @@ cadastro_servidor_faltantes <- full_join(cadastro_funcao_faltantes,cadastro_carg
 
 cadastro_geral <- rbind(cadastro_servidor,cadastro_servidor_comissionado)
 
-cadastro_geral <- rbind(cadastro_geral, cadastro_servidor_faltantes)
+
 
 # cadastro_geral <-  cadastro_geral %>% mutate(cpf_nome_lotacao = str_c(cpf_nome,"-",UORG_LOTACAO)) 
 # 
@@ -221,7 +221,7 @@ cadastro_geral <-  cadastro_geral %>% filter(cpf_nome_cargo %!in% cpf_nome_cargo
 
 ```
 
-```{r eval=FALSE, include=FALSE}
+```{r include=FALSE}
 
 # identificar servidores com multiplos vínculos
 cpf_duplicado <- cadastro_geral %>% group_by(cpf_nome) %>% count()
@@ -286,9 +286,19 @@ cpf_duplicado_fase_3 <- cpf_duplicado_fase_3 %>% filter(DESCRICAO_CARGO %in% c("
 cadastro_geral <- cadastro_geral%>% filter(cpf_nome_professor %!in% cpf_duplicado_fase_3$cpf_nome_professor)
 
 
-# faltantes <- setdiff(unique(cadastro$cpf_nome),cadastro_geral$cpf_nome)
+faltantes <- setdiff(unique(cadastro$cpf_nome),cadastro_geral$cpf_nome)
+
+cadastro_funcao_faltantes <- cadastro %>% filter(cpf_nome %in% faltantes, UORG_LOTACAO != "SERV APOIO DIAGNOSTICO E TERAPEUTICO") %>% select(NOME, FUNCAO, SIGLA_FUNCAO, NIVEL_FUNCAO)
+cadastro_cargo_faltantes <- cadastro %>%  filter(cpf_nome %in% faltantes, UORG_LOTACAO != "SERV APOIO DIAGNOSTICO E TERAPEUTICO") %>% select ( -FUNCAO,- SIGLA_FUNCAO, -NIVEL_FUNCAO)
+cadastro_servidor_faltantes <- full_join(cadastro_funcao_faltantes,cadastro_cargo_faltantes)
+
+cadastro_geral <- rbind(cadastro_geral %>% select(cpf_nome,NOME,DESCRICAO_CARGO,UORG_LOTACAO,ORG_LOTACAO, TIPO_VINCULO, SITUACAO_VINCULO ,SIGLA_FUNCAO,NIVEL_FUNCAO,FUNCAO,UORG_EXERCICIO,JORNADA_DE_TRABALHO, cpf_nome_uorg), cadastro_servidor_faltantes %>% select(cpf_nome,NOME,DESCRICAO_CARGO,UORG_LOTACAO,ORG_LOTACAO, TIPO_VINCULO, SITUACAO_VINCULO ,SIGLA_FUNCAO,NIVEL_FUNCAO,FUNCAO,UORG_EXERCICIO,JORNADA_DE_TRABALHO, cpf_nome_uorg))
+
+( setdiff(unique(cadastro$cpf_nome),cadastro_geral$cpf_nome))
+( setdiff(cadastro_geral$cpf_nome,unique(cadastro$cpf_nome)))
 
 
+pessoal <- left_join(servidores, cadastro_geral)
 
 ```
 
