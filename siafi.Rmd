@@ -145,43 +145,153 @@ servidores <- servidores %>% select(cpf_nome,`REMUNERAÇÃO BÁSICA BRUTA (R$)`,
 
 cadastro <- read_csv("cadastro_202112.csv")
 
-cadastro <- cadastro %>% mutate(cpf_nome_uorg = str_c(cpf_nome, UORG_EXERCICIO))
+cadastro <- cadastro %>% mutate(cpf_nome_uorg = str_c(cpf_nome, UORG_EXERCICIO)) %>% mutate(cpf_nome_uorg_jornada = str_c(cpf_nome_uorg,JORNADA_DE_TRABALHO))
 
+cadastro <- cadastro  %>% select(cpf_nome,NOME,DESCRICAO_CARGO,UORG_LOTACAO,ORG_LOTACAO, TIPO_VINCULO, SITUACAO_VINCULO ,SIGLA_FUNCAO,NIVEL_FUNCAO,FUNCAO,UORG_EXERCICIO,JORNADA_DE_TRABALHO, cpf_nome_uorg)
 
+cadastro <- cadastro %>% filter(SITUACAO_VINCULO != "SEM VINCULO")
 
-multiplos_vinculos <- (cadastro %>% group_by(cpf_nome) %>% count()) %>% filter (n ==3)
-
-multiplos_vinculos_filtro <- (cadastro %>% group_by(cpf_nome, UORG_EXERCICIO) %>% count()) %>% filter (cpf_nome %in% multiplos_vinculos$cpf_nome, n ==1 )
-
-multiplos_vinculos_filtro <- multiplos_vinculos_filtro %>% mutate(cpf_nome_uorg = str_c(cpf_nome, UORG_EXERCICIO))
-
-cadastro <- cadastro %>% filter(cpf_nome_uorg %!in% multiplos_vinculos_filtro$cpf_nome_uorg)
-
+# multiplos_vinculos <- (cadastro %>% group_by(cpf_nome) %>% count()) %>% filter (n ==3)
+# 
+# multiplos_vinculos_filtro <- (cadastro %>% group_by(cpf_nome, UORG_EXERCICIO) %>% count()) %>% filter (cpf_nome %in% multiplos_vinculos$cpf_nome, n ==1 )
+# 
+# multiplos_vinculos_filtro <- multiplos_vinculos_filtro %>% mutate(cpf_nome_uorg = str_c(cpf_nome, UORG_EXERCICIO))
+# 
+# cadastro <- cadastro %>% filter(cpf_nome_uorg %!in% multiplos_vinculos_filtro$cpf_nome_uorg)
+# 
 # datatable(cadastro %>% group_by(cpf_nome_uorg,JORNADA_DE_TRABALHO) %>% summarise(max(JORNADA_DE_TRABALHO)) %>% count() %>% filter(n==2))
+# 
+# servidores_multiplos_vinculos <- cadastro %>% filter(cpf_nome %in% multiplos_vinculos$cpf_nome)
+# 
+# datatable(servidores_multiplos_vinculos %>% group_by(FUNCAO) %>% count())
 
-servidores_multiplos_vinculos <- cadastro %>% filter(cpf_nome %in% multiplos_vinculos$cpf_nome)
 
-datatable(servidores_multiplos_vinculos %>% group_by(FUNCAO) %>% count())
+cadastro_funcao <- cadastro %>% filter(FUNCAO %!in% c("Sem informação", NA) ) %>% select(NOME, FUNCAO, SIGLA_FUNCAO, NIVEL_FUNCAO)
+cadastro_cargo <- cadastro %>% filter(FUNCAO == "Sem informação" ) %>% select ( -FUNCAO,- SIGLA_FUNCAO, -NIVEL_FUNCAO)
+cadastro_servidor <- full_join(cadastro_cargo,cadastro_funcao)
 
 
-cadastro_funcao <- cadastro %>% filter(FUNCAO %!in% c("Sem informação", NA)) %>% select(NOME, FUNCAO, SIGLA_FUNCAO, NIVEL_FUNCAO)
-cadastro_cargo <- cadastro %>% filter(FUNCAO == "Sem informação") %>% select ( -FUNCAO,- SIGLA_FUNCAO, -NIVEL_FUNCAO)
-cadastro_servidor <- left_join(cadastro_cargo,cadastro_funcao) %>% select(cpf_nome,NOME,DESCRICAO_CARGO,UORG_LOTACAO,ORG_LOTACAO, TIPO_VINCULO, SITUACAO_VINCULO ,SIGLA_FUNCAO,NIVEL_FUNCAO,FUNCAO)
+cadastro_funcao_comissionado <- cadastro %>% filter(SITUACAO_VINCULO == "NOMEADO CARGO COMIS.") %>% select(NOME, FUNCAO, SIGLA_FUNCAO, NIVEL_FUNCAO)
+cadastro_cargo_comissionado <- cadastro %>% filter(SITUACAO_VINCULO == "NOMEADO CARGO COMIS.") %>% select ( -FUNCAO,- SIGLA_FUNCAO, -NIVEL_FUNCAO)
+cadastro_servidor_comissionado <- full_join(cadastro_cargo_comissionado,cadastro_funcao_comissionado)
 
-cadastro_servidor <-  cadastro_servidor %>% mutate(cpf_nome_lotacao = str_c(cpf_nome,"-",UORG_LOTACAO))
 
-dupla_jornada_filtro <- (cadastro %>% group_by(cpf_nome_uorg,JORNADA_DE_TRABALHO) %>% summarise(max(JORNADA_DE_TRABALHO)) %>% count() %>% filter(n==2))
+cadastro_funcao_faltantes <- cadastro %>% filter(cpf_nome %in% faltantes, UORG_LOTACAO != "SERV APOIO DIAGNOSTICO E TERAPEUTICO") %>% select(NOME, FUNCAO, SIGLA_FUNCAO, NIVEL_FUNCAO)
+cadastro_cargo_faltantes <- cadastro %>%  filter(cpf_nome %in% faltantes, UORG_LOTACAO != "SERV APOIO DIAGNOSTICO E TERAPEUTICO") %>% select ( -FUNCAO,- SIGLA_FUNCAO, -NIVEL_FUNCAO)
+cadastro_servidor_faltantes <- full_join(cadastro_funcao_faltantes,cadastro_cargo_faltantes)
 
-dupla_jornada <- cadastro %>% filter(cpf_nome_uorg %in% dupla_jornada_filtro$cpf_nome_uorg) %>% select(cpf_nome_uorg,DESCRICAO_CARGO,FUNCAO,UORG_EXERCICIO,JORNADA_DE_TRABALHO) %>% mutate(jornada = case_when(
+
+cadastro_geral <- rbind(cadastro_servidor,cadastro_servidor_comissionado)
+
+cadastro_geral <- rbind(cadastro_geral, cadastro_servidor_faltantes)
+
+# cadastro_geral <-  cadastro_geral %>% mutate(cpf_nome_lotacao = str_c(cpf_nome,"-",UORG_LOTACAO)) 
+# 
+# cadastro_geral <- cadastro_geral %>% mutate(cpf_nome_uorg_jornada = str_c(cpf_nome_uorg,JORNADA_DE_TRABALHO))
+# 
+#  cadastro_geral <- cadastro_geral %>% mutate(cpf_nome_uorg_jornada = str_c(cpf_nome_uorg,JORNADA_DE_TRABALHO))
+ 
+#  dupla_jornada_filtro <- (cadastro_geral %>% group_by(cpf_nome,JORNADA_DE_TRABALHO) %>% summarise(max(JORNADA_DE_TRABALHO)) %>% count() %>% filter(n==1))
+#  
+#  dupla_jornada <- cadastro_geral %>% filter(cpf_nome_uorg %in% dupla_jornada_filtro$cpf_nome_uorg) %>% select(cpf_nome_uorg,DESCRICAO_CARGO,FUNCAO,UORG_EXERCICIO,JORNADA_DE_TRABALHO) %>% mutate(jornada = case_when(
+#   JORNADA_DE_TRABALHO == "20 HORAS SEMANAIS" ~ 20,
+#   JORNADA_DE_TRABALHO == "40 HORAS SEMANAIS" ~ 40,
+#   JORNADA_DE_TRABALHO == "44 HORAS SEMANAIS" ~ 44,
+#   JORNADA_DE_TRABALHO == "DEDICACAO EXCLUSIVA" ~ 60
+# ))
+# 
+#  
+#  jornada <- dupla_jornada %>% group_by(cpf_nome_uorg) %>% summarise(JORNADA_DE_TRABALHO= min(JORNADA_DE_TRABALHO)) %>% mutate(cpf_nome_uorg_jornada = str_c(cpf_nome_uorg,JORNADA_DE_TRABALHO))
+# 
+#  
+#  cadastro_geral <- cadastro_geral %>% filter(cpf_nome_uorg_jornada %!in% jornada$cpf_nome_uorg_jornada)
+# 
+# jornada_dupla_fase_2 <- (cadastro_geral %>% group_by(cpf_nome) %>% count()) %>% filter(n==2)
+# 
+# 
+# datatable(cadastro_geral %>% filter (cpf_nome %in% jornada_dupla_fase_2$cpf_nome) %>% group_by(cpf_nome_uorg_jornada,cpf_nome_lotacao) %>% count())
+# 
+# cpf_nome_cargo <- (cadastro_geral %>% filter (cpf_nome %in% jornada_dupla_fase_2$cpf_nome) %>% group_by(cpf_nome_uorg_jornada,DESCRICAO_CARGO,cpf_nome_lotacao) %>% count())
+# 
+# cpf_nome_cargo_filtro <- cpf_nome_cargo %>% filter(DESCRICAO_CARGO %in% c("Inválido", "PROFESSOR DO MAGISTERIO SUPERIOR")) %>% mutate (cpf_nome_cargo = str_c (cpf_nome_uorg_jornada, DESCRICAO_CARGO))
+# 
+cadastro_geral <- cadastro_geral  %>% mutate (cpf_nome_cargo = str_c (cpf_nome_uorg_jornada, DESCRICAO_CARGO))
+# 
+cadastro_geral <-  cadastro_geral %>% filter(cpf_nome_cargo %!in% cpf_nome_cargo_filtro$cpf_nome_cargo)
+
+```
+
+```{r eval=FALSE, include=FALSE}
+
+# identificar servidores com multiplos vínculos
+cpf_duplicado <- cadastro_geral %>% group_by(cpf_nome) %>% count()
+
+cpf_duplicado <- cpf_duplicado %>% filter(n >1)
+
+cpf_duplicado <- cadastro_geral %>% filter(cpf_nome %in% cpf_duplicado$cpf_nome)
+
+# cpf_duplicado <- cpf_duplicado %>% select(cpf_nome, cpf_nome_uorg, cpf_nome_uorg_jornada, FUNCAO, SITUACAO_VINCULO,DESCRICAO_CARGO, UORG_LOTACAO, UORG_EXERCICIO, JORNADA_DE_TRABALHO)
+
+# eliminar registro duplicados a partir de UORG_EXERCICIO Sem Informação ou Inválido
+cpf_duplicado_uorg_filtro <- cpf_duplicado %>% filter(UORG_EXERCICIO %in% c("Sem informação", "Inválido"))
+
+cadastro_geral <- cadastro_geral %>% filter(cpf_nome_uorg %!in% cpf_duplicado_uorg_filtro$cpf_nome_uorg)
+
+# repetir o processo de depuração
+
+cpf_duplicado_fase_2 <- cadastro_geral %>% group_by(cpf_nome) %>% count()
+
+cpf_duplicado_fase_2 <- cpf_duplicado_fase_2 %>% filter(n >1)
+
+cpf_duplicado_fase_2 <- cadastro_geral %>% filter(cpf_nome %in% cpf_duplicado_fase_2$cpf_nome)
+
+
+
+
+cpf_duplicado_fase_2 <-  cpf_duplicado_fase_2 %>% mutate(jornada = case_when(
+  JORNADA_DE_TRABALHO == "12 HORAS SEMANAIS" ~ 12,
   JORNADA_DE_TRABALHO == "20 HORAS SEMANAIS" ~ 20,
+  JORNADA_DE_TRABALHO == "24 HORAS SEMANAIS" ~ 24,
   JORNADA_DE_TRABALHO == "40 HORAS SEMANAIS" ~ 40,
   JORNADA_DE_TRABALHO == "44 HORAS SEMANAIS" ~ 44,
-  JORNADA_DE_TRABALHO == "DEDICACAO EXCLUSIVA" ~ 60
-))
+  JORNADA_DE_TRABALHO == "DEDICACAO EXCLUSIVA" ~ 60,
+  JORNADA_DE_TRABALHO == "DSPN. PERMANENTE" ~ 60
+)) %>% 
+  mutate(lotacao = case_when(
+  UORG_LOTACAO == "Inválido" ~ 0,
+  UORG_LOTACAO == "Sem informação" ~ 0,
+  TRUE ~ 10
+)) %>% 
+  mutate(uorg_jornada = (jornada+lotacao))
+
+cpf_duplicado_fase_2 <-cpf_duplicado_fase_2 %>%  mutate (cpf_nome_lotacao = str_c(cpf_nome, UORG_LOTACAO)) %>% mutate(cpf_nome_professor = str_c(cpf_nome,DESCRICAO_CARGO))
+
+cpf_duplicado_fase_2 <- cpf_duplicado_fase_2 %>% filter(startsWith(DESCRICAO_CARGO, "PROFESSOR") )
+
+cadastro_geral <- cadastro_geral %>% mutate(cpf_nome_professor = str_c(cpf_nome,DESCRICAO_CARGO))
+
+cadastro_geral <- cadastro_geral %>% filter(cpf_nome_professor %!in% cpf_duplicado_fase_2$cpf_nome_professor)
+
+# repetir o processo de depuração
+
+cpf_duplicado_fase_3 <- cadastro_geral %>% group_by(cpf_nome) %>% count()
+
+cpf_duplicado_fase_3 <- cpf_duplicado_fase_3 %>% filter(n >1)
+
+cpf_duplicado_fase_3 <- cadastro_geral %>% filter(cpf_nome %in% cpf_duplicado_fase_3$cpf_nome)
 
 
-jornada <- dupla_jornada %>% group_by(cpf_nome_uorg) %>% summarise(JORNADA_DE_TRABALHO= min(JORNADA_DE_TRABALHO)) %>% mutate(cpf_nome_uorg_jornada = str_c(cpf_nome_uorg,JORNADA_DE_TRABALHO))
+cpf_duplicado_fase_3 <- cpf_duplicado_fase_3 %>% filter(DESCRICAO_CARGO %in% c("TECNOLOGISTA", "Inválido")) 
+
+cadastro_geral <- cadastro_geral%>% filter(cpf_nome_professor %!in% cpf_duplicado_fase_3$cpf_nome_professor)
+
+
+# faltantes <- setdiff(unique(cadastro$cpf_nome),cadastro_geral$cpf_nome)
+
+
+
 ```
+
 
 
 Tarefa: alterar consulta da tabela de ordenadores para trazer apenas ug e ordenador.
@@ -212,7 +322,7 @@ ug_orc <- read_excel("ug_receita_despesa.xlsx",     skip = 7)
 ug_orc <- ug_orc %>% select(-`Item Informação`)
 ug_orc <- ug_orc %>% mutate_at(vars(c(`RECEITA ORCAMENTARIA (BRUTA)`,`PAGAMENTOS TOTAIS (EXERCICIO E RAP)`)), ~replace_na(.,0))
 
-ug_conta_org <- full_join(ug_conta,ug_orc, by = "UG Executora Código")
+ug_conta_orc <- full_join(ug_conta,ug_orc, by = "UG Executora Código")
 
 
 
@@ -284,6 +394,16 @@ Row
 
 
 
+```{r}
+ug_conta_2 <- read_excel("ug_conta_2.xlsx", skip = 7) %>% filter(ATIVO != 0 & `PASSIVO E PATRIMONIO LIQUIDO` != 0) 
+ug_conta_2[is.na(ug_conta_2)] <- 0
+
+ug_orc_2 <- read_excel("ug_orc_2.xlsx",     skip = 7)
+ug_orc_2 <- ug_orc_2 %>% select(-`Item Informação`)
+ug_orc_2 <- ug_orc_2 %>% mutate_at(vars(c(`RECEITA ORCAMENTARIA (BRUTA)`,`PAGAMENTOS TOTAIS (EXERCICIO E RAP)`)), ~replace_na(.,0))
+
+ug_conta_orc_2 <- full_join(ug_conta_2,ug_orc_2, by = "UG Executora Código")
+```
 
 
 
