@@ -1,5 +1,5 @@
 ---
-title: "siafi"
+title: "Ordenador"
 output: 
   flexdashboard::flex_dashboard:
     orientation: rows
@@ -7,6 +7,23 @@ output:
 runtime: shiny
 ---
 
+## Pergunta: Quem são as pessoas responsáveis por administrar o patrimônio e o orçamento federal?"
+
+## Motivação: identificar os responsáveis por administrar o patrimônio e o orçamento federal"
+
+## Objetivo Geral: mapear o perfil dos ordenadores de despesa"
+
+### Objetivos Específicos:
+Mapear os ordenadores por:
+Cargo
+Função
+UORG
+Remuneração
+Patrimônio sob gestão
+Orçamento sob gestão
+Concentração geográfica
+Distribuição entre servidores e não servidores
+Identificar possíveis pessoas politicamente expostas
 
 ```{r}
 options(scipen=999)
@@ -42,7 +59,8 @@ library(ggx)
 '%!in%' <- Negate('%in%')
 ```
 
-```{r}
+
+```{r tabela reais}
 tabela_reais = function (df,coluna = NULL) {
       datatable((df)%>%
   # "row" para o total aparecer na linha, ou seja, totalizar os valores de uma coluna
@@ -75,11 +93,78 @@ tabela_reais = function (df,coluna = NULL) {
 ) 
 }
 ```
+
+### O primeiro passo é importar os relatórios do Tesouro Gerencial com dados da execução orçamentária e patrimônio das UGs e seus respectivos ordenadores de despesa.
+
+Vamos criar a variável cpf_nome para poder vincular as tabelas ordenador_ug, ordenador_cadastro e ordenador_remuneracao.
+
+```{r ordenador_ug}
+ug_conta <- read_excel("___ug_conta_2.xlsx", skip = 7)
+
+names(ug_conta)[1] <- "item"
+names(ug_conta)[21] <- "saldo"
+
+ug_orc <- read_excel("___ug_orc_2.xlsx",     skip = 5)
+names(ug_orc)[1] <- "item"
+names(ug_orc)[21] <- "saldo"
+
+ordenador_ug <- rbind(ug_conta,ug_orc)
+
+ordenador_ug <- ordenador_ug %>%  mutate(CPF = str_c("***.",str_sub(`UGE - Ordenador - Responsável Número`,start = 4L, end = -6L),".",str_sub(`UGE - Ordenador - Responsável Número`,start = 7L, end = -3L),"-**"))
+
+ordenador_ug <- ordenador_ug  %>% mutate (cpf_nome = str_c(CPF,`UGE - Ordenador - Responsável Nome`))
+```
+
+### Importar dados cadastrais de ordenadores aposentados e salvar arquivo csv
+
+```{r cadastro aposentados eval=FALSE, include=FALSE}
+
+civis_aposentados <- read_excel("202112_civis_aposentados.xlsx")
+militares_reforma <- read_excel("202111_militares_reforma.xlsx")
+bacen_aposentados <- read_excel("bacen_aposentados.xlsx")
+
+civis_aposentados <- civis_aposentados %>% mutate (cpf_nome = str_c(CPF,NOME)) %>% filter(cpf_nome %in% ordenador$cpf_nome)
+militares_reforma <- militares_reforma%>% mutate (cpf_nome = str_c(CPF,NOME)) %>% filter(cpf_nome %in% ordenador$cpf_nome)
+bacen_aposentados <- bacen_aposentados %>% mutate (cpf_nome = str_c(CPF,NOME)) %>% filter(cpf_nome %in% ordenador$cpf_nome)
+
+cadastro_aposentados <- rbind(militares_reforma, civis_aposentados, bacen_aposentados)
+
+
+write_csv(cadastro_aposentados, "cadastro_aposentados.csv")
+
+```
+
+### Importar dados cadastrais de ordenadores da ativa e salvar arquivo csv
+
+```{r cadastro servidores eval=FALSE, include=FALSE}
+
+militares_cadastro <- read_excel("202112_militares_cadastro.xlsx")%>% mutate (cpf_nome = str_c(CPF,NOME))
+civis_cadastro <- read_excel("202112_civis_cadastro.xlsx")%>% mutate (cpf_nome = str_c(CPF,NOME))
+bacen_cadastro <- read_excel("202112_bacen_cadastro.xlsx")%>% mutate (cpf_nome = str_c(CPF,NOME))
+
+
+
+militares_cadastro <- militares_cadastro %>% filter(cpf_nome %in% ordenador$cpf_nome)
+
+civis_cadastro <- civis_cadastro%>% filter(cpf_nome %in% ordenador$cpf_nome)
+
+
+bacen_cadastro <- bacen_cadastro %>% filter(cpf_nome %in% ordenador$cpf_nome)
+
+cadastro <- rbind(militares_cadastro, civis_cadastro, bacen_cadastro)
+
+write_csv(cadastro, "cadastro_202112.csv")
+```
+
+
+
 Importar remuneracao dos servidores, filtrar apenas os ordenadores de despesa e salvar arquivo para deixar o processamento mais leve
 
 Tarefa: criar funcao para importar, criar variavel cpf_nome
 
-```{r eval=FALSE, include=FALSE}
+https://www.portaltransparencia.gov.br/download-de-dados
+
+```{r remuneracao servidores eval=FALSE, include=FALSE}
 
 
 militares <- read_excel("202112_militares.xlsx")%>% mutate (cpf_nome = str_c(CPF,NOME))
@@ -107,35 +192,26 @@ write_csv(servidores, "servidores_202112.csv")
 
 ```
 
-Importar cadastro dos servidores, filtrar apenas os ordenadores de despesa e salvar arquivo para deixar o processamento mais leve
+### Importar dados de pessoas expostas
 
+```{r expostas}
+expostas <- read_excel("expostas.xlsx") %>% mutate(cpf_nome = str_c(CPF, Nome_PEP))%>% filter(cpf_nome %in% ordenador$cpf_nome)
 
-```{r eval=FALSE, include=FALSE}
-
-
-
-militares_cadastro <- read_excel("202112_militares_cadastro.xlsx")%>% mutate (cpf_nome = str_c(CPF,NOME))
-civis_cadastro <- read_excel("202112_civis_cadastro.xlsx")%>% mutate (cpf_nome = str_c(CPF,NOME))
-bacen_cadastro <- read_excel("202112_bacen_cadastro.xlsx")%>% mutate (cpf_nome = str_c(CPF,NOME))
+# expostas <- expostas  %>% mutate(cpf_nome = str_c(CPF, Nome_PEP))
 
 
 
-militares_cadastro <- militares_cadastro %>% filter(cpf_nome %in% ordenador$cpf_nome)
-
-civis_cadastro <- civis_cadastro%>% filter(cpf_nome %in% ordenador$cpf_nome)
-
-
-bacen_cadastro <- bacen_cadastro %>% filter(cpf_nome %in% ordenador$cpf_nome)
-
-cadastro <- rbind(militares_cadastro, civis_cadastro, bacen_cadastro)
-
-write_csv(cadastro, "cadastro_202112.csv")
 
 ```
 
+### Importar arquivos csv com dados de remuneração, cadastro dos servidores da ativa e cadastro dos aposentados.
 
+Ajustar colunas da tabela de casdatro dos aposentado para viabilizar a junção com a tabela dos servidores da ativa (rbind)
 
 ```{r}
+
+
+
 servidores <- read_csv("servidores_202112.csv")
 
 
@@ -148,6 +224,41 @@ cadastro <- read_csv("cadastro_202112.csv")
 cadastro <- cadastro %>% mutate(cpf_nome_uorg = str_c(cpf_nome, UORG_EXERCICIO)) %>% mutate(cpf_nome_uorg_jornada = str_c(cpf_nome_uorg,JORNADA_DE_TRABALHO))
 
 cadastro <- cadastro  %>% select(cpf_nome,NOME,DESCRICAO_CARGO,UORG_LOTACAO,ORG_LOTACAO, TIPO_VINCULO, SITUACAO_VINCULO ,SIGLA_FUNCAO,NIVEL_FUNCAO,FUNCAO,UORG_EXERCICIO,JORNADA_DE_TRABALHO, cpf_nome_uorg)
+
+cadastro_aposentados <- read_csv("cadastro_aposentados.csv")
+
+cadastro_aposentados <- cadastro_aposentados %>%  mutate(UORG_EXERCICIO = "Inativo", SIGLA_FUNCAO = "Inativo",NIVEL_FUNCAO = "Inativo",FUNCAO= "Inativo"  )  %>% mutate(cpf_nome_uorg = str_c(cpf_nome, UORG_EXERCICIO)) %>% mutate(cpf_nome_uorg_jornada = str_c(cpf_nome_uorg,JORNADA_DE_TRABALHO))
+
+cadastro_aposentados <- cadastro_aposentados %>% select(colnames(cadastro))
+
+cadastro_total <- rbind(cadastro, cadastro_aposentados)
+
+cadastro_total <- cadastro_total %>% mutate (cargo_funcao = if_else(DESCRICAO_CARGO != "Sem informação", DESCRICAO_CARGO, SITUACAO_VINCULO) )
+
+```
+
+
+```{r eval=FALSE, include=FALSE}
+servidores <- read_csv("servidores_202112.csv")
+
+
+
+servidores <- servidores %>% select(cpf_nome,`REMUNERAÇÃO BÁSICA BRUTA (R$)`,`REMUNERAÇÃO BÁSICA BRUTA (U$)`) %>% mutate(remuneracao =`REMUNERAÇÃO BÁSICA BRUTA (R$)`+ 5*`REMUNERAÇÃO BÁSICA BRUTA (U$)` )
+
+
+cadastro <- read_csv("cadastro_202112.csv")
+
+cadastro <- cadastro %>% mutate(cpf_nome_uorg = str_c(cpf_nome, UORG_EXERCICIO)) %>% mutate(cpf_nome_uorg_jornada = str_c(cpf_nome_uorg,JORNADA_DE_TRABALHO))
+
+cadastro <- cadastro  %>% select(cpf_nome,NOME,DESCRICAO_CARGO,UORG_LOTACAO,ORG_LOTACAO, TIPO_VINCULO, SITUACAO_VINCULO ,SIGLA_FUNCAO,NIVEL_FUNCAO,FUNCAO,UORG_EXERCICIO,JORNADA_DE_TRABALHO, cpf_nome_uorg)
+
+cadastro_aposentados <- read_csv("cadastro_aposentados.csv")
+
+cadastro_aposentados <- cadastro_aposentados %>%  mutate(UORG_EXERCICIO = "Inativo", SIGLA_FUNCAO = "Inativo",NIVEL_FUNCAO = "Inativo",FUNCAO= "Inativo"  )  %>% mutate(cpf_nome_uorg = str_c(cpf_nome, UORG_EXERCICIO)) %>% mutate(cpf_nome_uorg_jornada = str_c(cpf_nome_uorg,JORNADA_DE_TRABALHO))
+
+cadastro_aposentados <- cadastro_aposentados %>% select(colnames(cadastro))
+
+cadastro_total <- rbind(cadastro, cadastro_aposentados)
 
 cadastro <- cadastro %>% filter(SITUACAO_VINCULO != "SEM VINCULO")
 
@@ -176,13 +287,15 @@ cadastro_cargo_comissionado <- cadastro %>% filter(SITUACAO_VINCULO == "NOMEADO 
 cadastro_servidor_comissionado <- full_join(cadastro_cargo_comissionado,cadastro_funcao_comissionado)
 
 
-cadastro_funcao_faltantes <- cadastro %>% filter(cpf_nome %in% faltantes, UORG_LOTACAO != "SERV APOIO DIAGNOSTICO E TERAPEUTICO") %>% select(NOME, FUNCAO, SIGLA_FUNCAO, NIVEL_FUNCAO)
-cadastro_cargo_faltantes <- cadastro %>%  filter(cpf_nome %in% faltantes, UORG_LOTACAO != "SERV APOIO DIAGNOSTICO E TERAPEUTICO") %>% select ( -FUNCAO,- SIGLA_FUNCAO, -NIVEL_FUNCAO)
-cadastro_servidor_faltantes <- full_join(cadastro_funcao_faltantes,cadastro_cargo_faltantes)
+# cadastro_funcao_faltantes <- cadastro %>% filter(cpf_nome %in% faltantes, UORG_LOTACAO != "SERV APOIO DIAGNOSTICO E TERAPEUTICO") %>% select(NOME, FUNCAO, SIGLA_FUNCAO, NIVEL_FUNCAO)
+# cadastro_cargo_faltantes <- cadastro %>%  filter(cpf_nome %in% faltantes, UORG_LOTACAO != "SERV APOIO DIAGNOSTICO E TERAPEUTICO") %>% select ( -FUNCAO,- SIGLA_FUNCAO, -NIVEL_FUNCAO)
+# cadastro_servidor_faltantes <- full_join(cadastro_funcao_faltantes,cadastro_cargo_faltantes)
 
 
 cadastro_geral <- rbind(cadastro_servidor,cadastro_servidor_comissionado)
 
+
+write_csv(cadastro_geral, "cadastro_geral.csv")
 
 
 # cadastro_geral <-  cadastro_geral %>% mutate(cpf_nome_lotacao = str_c(cpf_nome,"-",UORG_LOTACAO)) 
@@ -215,13 +328,13 @@ cadastro_geral <- rbind(cadastro_servidor,cadastro_servidor_comissionado)
 # 
 # cpf_nome_cargo_filtro <- cpf_nome_cargo %>% filter(DESCRICAO_CARGO %in% c("Inválido", "PROFESSOR DO MAGISTERIO SUPERIOR")) %>% mutate (cpf_nome_cargo = str_c (cpf_nome_uorg_jornada, DESCRICAO_CARGO))
 # 
-cadastro_geral <- cadastro_geral  %>% mutate (cpf_nome_cargo = str_c (cpf_nome_uorg_jornada, DESCRICAO_CARGO))
-# 
-cadastro_geral <-  cadastro_geral %>% filter(cpf_nome_cargo %!in% cpf_nome_cargo_filtro$cpf_nome_cargo)
+# cadastro_geral <- cadastro_geral  %>% mutate (cpf_nome_cargo = str_c (cpf_nome_uorg_jornada, DESCRICAO_CARGO))
+# # 
+# cadastro_geral <-  cadastro_geral %>% filter(cpf_nome_cargo %!in% cpf_nome_cargo_filtro$cpf_nome_cargo)
 
 ```
 
-```{r include=FALSE}
+```{r eval=FALSE, include=FALSE}
 
 # identificar servidores com multiplos vínculos
 cpf_duplicado <- cadastro_geral %>% group_by(cpf_nome) %>% count()
@@ -237,7 +350,7 @@ cpf_duplicado_uorg_filtro <- cpf_duplicado %>% filter(UORG_EXERCICIO %in% c("Sem
 
 cadastro_geral <- cadastro_geral %>% filter(cpf_nome_uorg %!in% cpf_duplicado_uorg_filtro$cpf_nome_uorg)
 
-# repetir o processo de depuração
+# repetir o processo de depuração 
 
 cpf_duplicado_fase_2 <- cadastro_geral %>% group_by(cpf_nome) %>% count()
 
@@ -285,7 +398,7 @@ cpf_duplicado_fase_3 <- cpf_duplicado_fase_3 %>% filter(DESCRICAO_CARGO %in% c("
 
 cadastro_geral <- cadastro_geral%>% filter(cpf_nome_professor %!in% cpf_duplicado_fase_3$cpf_nome_professor)
 
-
+# tem funcao, mas não tem cargo.
 faltantes <- setdiff(unique(cadastro$cpf_nome),cadastro_geral$cpf_nome)
 
 cadastro_funcao_faltantes <- cadastro %>% filter(cpf_nome %in% faltantes, UORG_LOTACAO != "SERV APOIO DIAGNOSTICO E TERAPEUTICO") %>% select(NOME, FUNCAO, SIGLA_FUNCAO, NIVEL_FUNCAO)
@@ -300,13 +413,16 @@ cadastro_geral <- rbind(cadastro_geral %>% select(cpf_nome,NOME,DESCRICAO_CARGO,
 
 pessoal <- left_join(servidores, cadastro_geral)
 
+# 
+# expostas <- expostas %>% mutate (cpf_nome = str_c())
+
 ```
 
 
 
 Tarefa: alterar consulta da tabela de ordenadores para trazer apenas ug e ordenador.
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 ordenador <- read_excel("ug_202112.xlsx",     skip = 5)
 
 ordenador <- ordenador %>% mutate(CPF = str_c("***.",str_sub(`UGE - Ordenador - Responsável Número`,start = 4L, end = -6L),".",str_sub(`UGE - Ordenador - Responsável Número`,start = 7L, end = -3L),"-**"))
@@ -325,14 +441,12 @@ ordenador <- ordenador %>% group_by(`UGE - Ordenador - Responsável Nome`,cpf_no
 Tarefa: criar relatorio com ug, orgao, poder, ativo, passivo, receita e despesa
 
 ```{r}
-ug_conta <- read_excel("ug_conta.xlsx", skip = 7) %>% filter(ATIVO != 0 & `PASSIVO E PATRIMONIO LIQUIDO` != 0) 
-ug_conta[is.na(ug_conta)] <- 0
 
-ug_orc <- read_excel("ug_receita_despesa.xlsx",     skip = 7)
-ug_orc <- ug_orc %>% select(-`Item Informação`)
-ug_orc <- ug_orc %>% mutate_at(vars(c(`RECEITA ORCAMENTARIA (BRUTA)`,`PAGAMENTOS TOTAIS (EXERCICIO E RAP)`)), ~replace_na(.,0))
+servidores <- read_csv("servidores_202112.csv")
 
-ug_conta_orc <- full_join(ug_conta,ug_orc, by = "UG Executora Código")
+cadastro_geral <- read_csv("cadastro_geral.csv")
+
+
 
 
 
@@ -341,7 +455,7 @@ ug_conta_orc <- full_join(ug_conta,ug_orc, by = "UG Executora Código")
 Tarefa: mesclar ou vincular tabelas
 Eliminar duplicidade de vinculos na tabela cadastro
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 ugs <- left_join(ug_conta_org, ordenador %>% select(-`UG Executora Nome`))
 ugs <- left_join(ugs, ug_conta %>% select(-`UG Executora Nome`))
 
@@ -404,7 +518,7 @@ Row
 
 
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 ug_conta_2 <- read_excel("ug_conta_2.xlsx", skip = 7) %>% filter(ATIVO != 0 & `PASSIVO E PATRIMONIO LIQUIDO` != 0) 
 ug_conta_2[is.na(ug_conta_2)] <- 0
 
@@ -413,6 +527,71 @@ ug_orc_2 <- ug_orc_2 %>% select(-`Item Informação`)
 ug_orc_2 <- ug_orc_2 %>% mutate_at(vars(c(`RECEITA ORCAMENTARIA (BRUTA)`,`PAGAMENTOS TOTAIS (EXERCICIO E RAP)`)), ~replace_na(.,0))
 
 ug_conta_orc_2 <- full_join(ug_conta_2,ug_orc_2, by = "UG Executora Código")
+
+
+```
+
+```{r eval=FALSE, include=FALSE}
+datatable(ordenador %>% filter(cpf_nome %in% c(expostas$cpf_nome)))
+
+ordenador_exposto <- left_join(ordenador %>% filter(cpf_nome %in% c(expostas$cpf_nome)), expostas)
+```
+
+```{r}
+tabela_reais((ordenador %>% filter(item == "PAGAMENTOS TOTAIS (EXERCICIO E RAP)") %>% group_by(`UG Executora Nome`, `Órgão UGE Nome`) %>% summarise(total = sum(saldo))))
+
+tabela_reais((ordenador %>% filter(item == "ATIVO CIRCULANTE") %>% group_by(`UG Executora Nome`, `Órgão UGE Nome`) %>% summarise(total = sum(saldo))))
+
+tabela_reais((ordenador %>% filter(item == "PASSIVO CIRCULANTE") %>% group_by(`UG Executora Nome`, `Órgão UGE Nome`) %>% summarise(total = sum(saldo))))
+
+tabela_reais((ordenador %>% filter(item == "ATIVO NAO CIRCULANTE") %>% group_by(`UG Executora Nome`, `Órgão UGE Nome`) %>% summarise(total = sum(saldo))))
+
+tabela_reais((ordenador %>% filter(item == "PASSIVO NAO-CIRCULANTE") %>% group_by(`UG Executora Nome`, `Órgão UGE Nome`) %>% summarise(total = sum(saldo))))
+
+tabela_reais((ordenador %>% filter(item == "RECEITA ORCAMENTARIA (BRUTA)") %>% group_by(`UG Executora Nome`, `Órgão UGE Nome`) %>% summarise(total = sum(saldo))))
+
+tabela_reais((ordenador %>% filter(item == "PATRIMONIO LIQUIDO") %>% group_by(`UG Executora Nome`, `Órgão UGE Nome`) %>% summarise(total = sum(saldo))))
+```
+
+https://r-graph-gallery.com/196-the-wordcloud2-library.html
+
+https://cran.r-project.org/web/packages/ggwordcloud/vignettes/ggwordcloud.html
+
+http://www.sthda.com/english/wiki/text-mining-and-word-cloud-fundamentals-in-r-5-simple-steps-you-should-know
+
+```{r}
+
+library("tm")
+library("SnowballC")
+library("wordcloud")
+library("RColorBrewer")
+library("ggwordcloud")
+library("wordcloud2")
+
+
+cargo <- cadastro_total %>% group_by(cargo_funcao)  %>% count()
+cargo <- cargo%>% mutate (word = cargo_funcao)
+
+colnames(cargo)[2] <- "freq"
+
+(wordcloud(words =  cargo$DESCRICAO_CARGO, freq = cargo$n, random.order=FALSE, rot.per=0.25, 
+          colors=brewer.pal(8, "Dark2")))
+
+
+
+
+
+
+
+
+
+p <- ggplot(cargo, aes(label =DESCRICAO_CARGO , size = n)) +
+geom_text_wordcloud() +
+scale_size_area(max_size = 20) +
+theme_minimal()
+
+cargo <- cadastro_total$DESCRICAO_CARGO
+wordcloud2(data = cargo, color = "random-light", backgroundColor = "grey" )
 ```
 
 
