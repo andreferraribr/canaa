@@ -94,26 +94,63 @@ tabela_reais = function (df,coluna = NULL) {
 }
 ```
 
+### Bases de dados
+## Tesouro Gerencial: Utilizei o Tesouro Gerencial para obter o registro dos ordenadores da despesa, os dados básico das Unidades Gestoras (UGs), saldos contábeis e as receitas e despesas das UGs.
+
+
+## Portal da Transparência: obtive no Portal da Transparência a Relação das Pessoas Expostas Politicamente (PEP), o cadastro e a remuneração dos servidores do poder Executivo Federal (https://www.portaltransparencia.gov.br/download-de-dados)
+
+
+
+
 ### O primeiro passo é importar os relatórios do Tesouro Gerencial com dados da execução orçamentária e patrimônio das UGs e seus respectivos ordenadores de despesa.
 
-Vamos criar a variável cpf_nome para poder vincular as tabelas ordenador_ug, ordenador_cadastro e ordenador_remuneracao.
+Vamos criar a variável cpf_nome para poder vincular as tabelas ordenador_ug, ordenador_cadastro, ordenador_remuneracao e expostas (pessoas politicamante expostas).
 
 ```{r ordenador_ug}
 ug_conta <- read_excel("___ug_conta_2.xlsx", skip = 7)
 
 names(ug_conta)[1] <- "item"
 names(ug_conta)[21] <- "saldo"
+# retirar a linha com a data do arquivo
+ug_conta <- head(ug_conta,-1)
+
+
 
 ug_orc <- read_excel("___ug_orc_2.xlsx",     skip = 5)
 names(ug_orc)[1] <- "item"
 names(ug_orc)[21] <- "saldo"
 
+# retirar a linha com a data do arquivo
+ug_orc <- head(ug_orc,-1)
+
+
+
 ordenador_ug <- rbind(ug_conta,ug_orc)
+
+# retirar a linha com a data do arquivo
+
+ordenador_ug <- head(ordenador_ug,-1)
 
 ordenador_ug <- ordenador_ug %>%  mutate(CPF = str_c("***.",str_sub(`UGE - Ordenador - Responsável Número`,start = 4L, end = -6L),".",str_sub(`UGE - Ordenador - Responsável Número`,start = 7L, end = -3L),"-**"))
 
 ordenador_ug <- ordenador_ug  %>% mutate (cpf_nome = str_c(CPF,`UGE - Ordenador - Responsável Nome`))
+
+ordenador_ug <- ordenador_ug %>% pivot_wider(names_from = "item", values_from = "saldo")
+
+
+
+
 ```
+
+## REalizar análise explortatória de ordenador_ug
+
+```{r}
+
+```
+
+
+
 
 ### Importar dados cadastrais de ordenadores aposentados e salvar arquivo csv
 
@@ -136,6 +173,8 @@ write_csv(cadastro_aposentados, "cadastro_aposentados.csv")
 
 ### Importar dados cadastrais de ordenadores da ativa e salvar arquivo csv
 
+## executar apenas quando atualizar a base de dados (novo daownload de dados do Portal da Transparência)
+
 ```{r cadastro servidores eval=FALSE, include=FALSE}
 
 militares_cadastro <- read_excel("202112_militares_cadastro.xlsx")%>% mutate (cpf_nome = str_c(CPF,NOME))
@@ -157,12 +196,12 @@ write_csv(cadastro, "cadastro_202112.csv")
 ```
 
 
+### Importar remuneracao dos servidores, filtrar apenas os ordenadores de despesa e salvar arquivo para deixar o processamento mais leve
 
-Importar remuneracao dos servidores, filtrar apenas os ordenadores de despesa e salvar arquivo para deixar o processamento mais leve
 
 Tarefa: criar funcao para importar, criar variavel cpf_nome
 
-https://www.portaltransparencia.gov.br/download-de-dados
+## executar apenas quando atualizar a base de dados (novo daownload de dados do Portal da Transparência)
 
 ```{r remuneracao servidores eval=FALSE, include=FALSE}
 
@@ -231,6 +270,240 @@ cadastro_aposentados <- cadastro_aposentados %>%  mutate(UORG_EXERCICIO = "Inati
 
 cadastro_aposentados <- cadastro_aposentados %>% select(colnames(cadastro))
 
+
+
+# um_vinculo <- cadastro_total %>% group_by(cpf_nome) %>% count() %>% filter(n ==1)
+# 
+# cadastro_funcao_um_vinculo <- cadastro_total %>% filter( cpf_nome %in% um_vinculo$cpf_nome ) %>% select(cpf_nome, FUNCAO, SIGLA_FUNCAO, NIVEL_FUNCAO)
+# cadastro_cargo_um_vinculo <- cadastro_total %>% filter( cpf_nome %in% um_vinculo$cpf_nome ) %>% select ( -FUNCAO,- SIGLA_FUNCAO, -NIVEL_FUNCAO)
+# cadastro_um_vinculo <- full_join(cadastro_cargo_um_vinculo,cadastro_funcao_um_vinculo)
+# 
+# 
+# (datatable(cadastro_um_vinculo %>% group_by(cargo_funcao, DESCRICAO_CARGO) %>% count()))
+# 
+# 
+# (datatable(cadastro_total %>% filter (cpf_nome %!in% cadastro_um_vinculo$cpf_nome) %>% group_by(cpf_nome) %>% count()))
+# 
+# (datatable(cadastro_total %>% filter (cargo_funcao == "Inválido" ) %>% group_by(cpf_nome) %>% count()))
+# 
+# 
+# 
+# 
+# cadastro_funcao_multiplo_vinculo <- cadastro_total %>% filter( cpf_nome %!in% um_vinculo$cpf_nome, FUNCAO %!in% c("Sem informação", NA, "Inativo")  ) %>% select(cpf_nome, FUNCAO, SIGLA_FUNCAO, NIVEL_FUNCAO)
+# cadastro_cargo_multiplo_vinculo <- cadastro_total %>% filter( cpf_nome %!in% um_vinculo$cpf_nome,FUNCAO %in% c ("Sem informação", "Inativo") ) %>% select ( -FUNCAO,- SIGLA_FUNCAO, -NIVEL_FUNCAO)
+# cadastro_multiplo_vinculo <- full_join(cadastro_cargo_multiplo_vinculo,cadastro_funcao_multiplo_vinculo)
+# 
+# (duplicados <- (cadastro_multiplo_vinculo %>% group_by(cpf_nome) %>% count()) %>% filter(n>1))
+# 
+# 
+# (singulares <- (cadastro_multiplo_vinculo %>% group_by(cpf_nome) %>% count()) %>% filter(n==1))
+# 
+# 
+# 
+# cadastro_funcao_singulares <- cadastro_total %>% filter( cpf_nome %in% singulares$cpf_nome, FUNCAO %!in% c("Sem informação", NA, "Inativo") ) %>% select(cpf_nome, FUNCAO, SIGLA_FUNCAO, NIVEL_FUNCAO)
+# cadastro_cargo_singulares <- cadastro_total %>% filter( cpf_nome %in% singulares$cpf_nome,FUNCAO %in% c ("Sem informação", "Inativo") ) %>% select ( -FUNCAO,- SIGLA_FUNCAO, -NIVEL_FUNCAO)
+# cadastro_singulares <- full_join(cadastro_cargo_singulares,cadastro_funcao_singulares)
+# 
+# 
+# (datatable(cadastro_multiplo_vinculo %>% filter(cpf_nome %in% duplicados$cpf_nome) ))
+# 
+# 
+# (datatable(cadastro_multiplo_vinculo %>% filter(cpf_nome %in% duplicados$cpf_nome) ))
+# 
+# 
+# datatable(duplicados %>% filter())
+# 
+# datatable(duplicados_fase_2 <- cadastro_total %>% filter(cpf_nome %!in% c(cadastro_um_vinculo$cpf_nome, cadastro_singulares$cpf_nome)))
+# 
+# datatable(duplicados_fase_2 %>%filter(FUNCAO != "Sem informação") %>% group_by(cpf_nome, cargo_funcao) %>% count())
+# datatable(duplicados_fase_2 %>%filter(FUNCAO == "Sem informação") %>% group_by(cpf_nome, cargo_funcao) %>% count())
+# datatable(duplicados_fase_2 %>%filter (SITUACAO_VINCULO %!in% c("APOSENTADO" )) %>% group_by(cpf_nome) %>% count())
+# 
+# datatable(duplicados_fase_2 %>%  group_by(cpf_nome, TIPO_VINCULO) %>% count() %>% pivot_wider(names_from =  "TIPO_VINCULO",values_from = n))
+# 
+# cpf_nome_cargo_filtro <- cadastro_multiplo_vinculo %>% filter(cpf_nome %in% duplicados$cpf_nome, DESCRICAO_CARGO %in% c("Inválido", "PROFESSOR DO MAGISTERIO SUPERIOR")) 
+
+# cadastro_funcao <- cadastro_total %>% filter(FUNCAO %!in% c("Sem informação", NA, "Inativo") )
+# cadastro_cargo <- cadastro_total %>% filter(FUNCAO %in% c("Sem informação", "Inativo") )
+# cadastro_total_2 <- full_join(cadastro_cargo,cadastro_funcao)
+# 
+# datatable(cadastro_total_2 %>% group_by(cpf_nome) %>% count())
+# 
+# cadastro_funcao <- cadastro_total %>% filter(FUNCAO %!in% c("Sem informação", NA) ) %>% select(NOME, FUNCAO, SIGLA_FUNCAO, NIVEL_FUNCAO)
+# cadastro_cargo <- cadastro_total %>% filter(FUNCAO == "Sem informação" ) %>% select ( -FUNCAO,- SIGLA_FUNCAO, -NIVEL_FUNCAO)
+# cadastro_total <- full_join(cadastro_cargo,cadastro_funcao)
+
+```
+
+```{r}
+cadastro_total <- rbind(cadastro, cadastro_aposentados)
+
+cadastro_total <- cadastro_total %>% mutate (cargo_funcao = if_else(DESCRICAO_CARGO != "Sem informação", DESCRICAO_CARGO, SITUACAO_VINCULO) )
+
+cadastro_total <- cadastro_total %>% filter(SITUACAO_VINCULO != "SEM VINCULO")
+
+cadastro_total <- cadastro_total%>% mutate(jornada = case_when(
+  JORNADA_DE_TRABALHO == "12 HORAS SEMANAIS" ~ 12,
+  JORNADA_DE_TRABALHO == "20 HORAS SEMANAIS" ~ 20,
+  JORNADA_DE_TRABALHO == "24 HORAS SEMANAIS" ~ 24,
+  JORNADA_DE_TRABALHO == "30 HORAS SEMANAIS" ~ 30,
+  JORNADA_DE_TRABALHO == "40 HORAS SEMANAIS" ~ 40,
+  JORNADA_DE_TRABALHO == "44 HORAS SEMANAIS" ~ 44,
+  JORNADA_DE_TRABALHO == "DEDICACAO EXCLUSIVA" ~ 60,
+  JORNADA_DE_TRABALHO == "DSPN. PERMANENTE" ~ 60
+)) %>% 
+  mutate(lotacao = case_when(
+  UORG_LOTACAO == "Inválido" ~ 0,
+  UORG_LOTACAO == "Sem informação" ~ 0,
+  TRUE ~ 40
+)) %>% 
+  mutate(uorg_jornada = (jornada+lotacao)) %>% mutate(cpf_nome_uorg_jornada_cargo_funcao = str_c(cpf_nome,uorg_jornada,cargo_funcao))
+
+# identificar quem tem funcao
+funcao <- cadastro_total %>% group_by(cpf_nome) %>% filter (TIPO_VINCULO == "Função" ) %>% count()
+colnames(funcao)[2] <- "funcao"
+
+# identificar outros vinculos
+outro_vinculo <- cadastro_total %>% group_by(cpf_nome) %>% filter (TIPO_VINCULO != "Função" ) %>% count()
+colnames(outro_vinculo)[2] <- "outro_vinculo"
+tipo_vinculo <- full_join(funcao, outro_vinculo)
+tipo_vinculo[is.na(tipo_vinculo) ] <- 0
+
+(datatable(tipo_vinculo %>% group_by(funcao, outro_vinculo) %>% count()))
+
+
+datatable(cadastro_total %>% filter(TIPO_VINCULO != "Função" ) %>% group_by(cpf_nome) %>% summarise(min(cpf_nome_uorg_jornada_cargo_funcao)))
+datatable(cadastro_total %>% filter(TIPO_VINCULO == "Função" ) %>% group_by(cpf_nome) %>% summarise(min(cpf_nome_uorg_jornada_cargo_funcao)))
+
+filtro_1_vinculo <- cadastro_total %>% filter(TIPO_VINCULO != "Função" ) %>% group_by(cpf_nome) %>% summarise(min(cpf_nome_uorg_jornada_cargo_funcao))
+
+filtro_funcao <- cadastro_total %>% filter(TIPO_VINCULO == "Função" ) %>% group_by(cpf_nome) %>% summarise(min(cpf_nome_uorg_jornada_cargo_funcao))
+
+cadastro_total <- cadastro_total %>% filter (cpf_nome_uorg_jornada_cargo_funcao %in% filtro_1_vinculo$`min(cpf_nome_uorg_jornada_cargo_funcao)` | cpf_nome_uorg_jornada_cargo_funcao %in% filtro_funcao$`min(cpf_nome_uorg_jornada_cargo_funcao)` )
+
+funcao <- cadastro_total %>% group_by(cpf_nome) %>% filter (TIPO_VINCULO == "Função" ) %>% count()
+colnames(funcao)[2] <- "funcao"
+
+# identificar outros vinculos
+outro_vinculo <- cadastro_total %>% group_by(cpf_nome) %>% filter (TIPO_VINCULO != "Função" ) %>% count()
+colnames(outro_vinculo)[2] <- "outro_vinculo"
+tipo_vinculo <- full_join(funcao, outro_vinculo)
+tipo_vinculo[is.na(tipo_vinculo) ] <- 0
+
+(datatable(tipo_vinculo %>% group_by(funcao, outro_vinculo) %>% count()))
+
+
+
+
+
+
+
+
+
+funcao_0 <- cadastro_total %>% filter(cpf_nome %!in% funcao$cpf_nome) %>% select(cpf_nome)
+
+outro_vinculo_2 <- outro_vinculo %>% filter(outro_vinculo > 1) %>% select(cpf_nome)
+
+# datatable(funcao_1_outro_1 <- cadastro_total %>% filter(cpf_nome %in% intersect(funcao$cpf_nome , outro_vinculo %>% filter(outro_vinculo == 1) %>% select(cpf_nome))))
+
+funcao_1_outro_vinculo_2 <- (cadastro_total %>% filter (cpf_nome %in% outro_vinculo_2$cpf_nome, cpf_nome %in% funcao$cpf_nome))
+
+funcao_1_outro_vinculo_2 <- funcao_1_outro_vinculo_2 %>% mutate(jornada = case_when(
+  JORNADA_DE_TRABALHO == "12 HORAS SEMANAIS" ~ 12,
+  JORNADA_DE_TRABALHO == "20 HORAS SEMANAIS" ~ 20,
+  JORNADA_DE_TRABALHO == "24 HORAS SEMANAIS" ~ 24,
+  JORNADA_DE_TRABALHO == "30 HORAS SEMANAIS" ~ 30,
+  JORNADA_DE_TRABALHO == "40 HORAS SEMANAIS" ~ 40,
+  JORNADA_DE_TRABALHO == "44 HORAS SEMANAIS" ~ 44,
+  JORNADA_DE_TRABALHO == "DEDICACAO EXCLUSIVA" ~ 60,
+  JORNADA_DE_TRABALHO == "DSPN. PERMANENTE" ~ 60
+)) %>% 
+  mutate(lotacao = case_when(
+  UORG_LOTACAO == "Inválido" ~ 0,
+  UORG_LOTACAO == "Sem informação" ~ 0,
+  TRUE ~ 40
+)) %>% 
+  mutate(uorg_jornada = (jornada+lotacao)) %>% mutate(cpf_nome_uorg_jornada_cargo_funcao = str_c(cpf_nome,uorg_jornada,cargo_funcao))
+
+datatable(funcao_1_outro_vinculo_2 %>%group_by(cpf_nome) %>% summarise(max(cpf_nome_uorg_jornada_cargo_funcao)))
+
+datatable(funcao_1_outro_vinculo_2 %>% group_by(cpf_nome) %>% summarise(min(cpf_nome_uorg_jornada_cargo_funcao)))
+
+cadastro_total <- cadastro_total %>% mutate(jornada = case_when(
+  JORNADA_DE_TRABALHO == "12 HORAS SEMANAIS" ~ 12,
+  JORNADA_DE_TRABALHO == "20 HORAS SEMANAIS" ~ 20,
+  JORNADA_DE_TRABALHO == "24 HORAS SEMANAIS" ~ 24,
+   JORNADA_DE_TRABALHO == "30 HORAS SEMANAIS" ~ 30,
+  JORNADA_DE_TRABALHO == "40 HORAS SEMANAIS" ~ 40,
+  JORNADA_DE_TRABALHO == "44 HORAS SEMANAIS" ~ 44,
+  JORNADA_DE_TRABALHO == "DEDICACAO EXCLUSIVA" ~ 60,
+  JORNADA_DE_TRABALHO == "DSPN. PERMANENTE" ~ 60
+)) %>% 
+  mutate(lotacao = case_when(
+  UORG_LOTACAO == "Inválido" ~ 0,
+  UORG_LOTACAO == "Sem informação" ~ 0,
+  TRUE ~ 40
+)) %>% 
+  mutate(uorg_jornada = (jornada+lotacao)) %>% mutate(cpf_nome_uorg_jornada_cargo_funcao = str_c(cpf_nome,uorg_jornada,cargo_funcao))
+
+filtro_multiplos_vinculos <- funcao_1_outro_vinculo_2 %>% filter(TIPO_VINCULO != "Função" ) %>% group_by(cpf_nome) %>% summarise(min(cpf_nome_uorg_jornada_cargo_funcao))
+
+cadastro_total_teste <- cadastro_total %>% filter( cpf_nome_uorg_jornada_cargo_funcao %!in% filtro_multiplos_vinculos$`min(cpf_nome_uorg_jornada_cargo_funcao)`)
+
+
+
+funcao <- cadastro_total_teste %>% group_by(cpf_nome) %>% filter (TIPO_VINCULO == "Função" ) %>% count()
+colnames(funcao)[2] <- "funcao"
+
+outro_vinculo <- cadastro_total_teste %>% group_by(cpf_nome) %>% filter (TIPO_VINCULO != "Função" ) %>% count()
+colnames(outro_vinculo)[2] <- "outro_vinculo"
+tipo_vinculo <- full_join(funcao, outro_vinculo)
+tipo_vinculo[is.na(tipo_vinculo) ] <- 0
+
+(datatable(tipo_vinculo %>% group_by(funcao, outro_vinculo) %>% count()))
+
+
+filtro_dois_cargos <- tipo_vinculo %>% filter(outro_vinculo == 2) %>% select(cpf_nome)
+
+dois_cargos <- (cadastro_total %>% filter (cpf_nome %in% filtro_dois_cargos$cpf_nome))
+
+dois_cargos <- dois_cargos %>% mutate(jornada = case_when(
+  JORNADA_DE_TRABALHO == "12 HORAS SEMANAIS" ~ 12,
+  JORNADA_DE_TRABALHO == "20 HORAS SEMANAIS" ~ 20,
+  JORNADA_DE_TRABALHO == "24 HORAS SEMANAIS" ~ 24,
+   JORNADA_DE_TRABALHO == "30 HORAS SEMANAIS" ~ 30,
+  JORNADA_DE_TRABALHO == "40 HORAS SEMANAIS" ~ 40,
+  JORNADA_DE_TRABALHO == "44 HORAS SEMANAIS" ~ 44,
+  JORNADA_DE_TRABALHO == "DEDICACAO EXCLUSIVA" ~ 60,
+  JORNADA_DE_TRABALHO == "DSPN. PERMANENTE" ~ 60
+)) %>% 
+  mutate(lotacao = case_when(
+  UORG_LOTACAO == "Inválido" ~ 0,
+  UORG_LOTACAO == "Sem informação" ~ 0,
+  TRUE ~ 40
+)) %>% 
+  mutate(uorg_jornada = (jornada+lotacao)) %>% mutate(cpf_nome_uorg_jornada_cargo_funcao = str_c(cpf_nome,uorg_jornada,cargo_funcao))
+
+#ajustar cadastro para manter apenas um registro por cpf_nome
+
+# filtrar pessoas com apenas um vínculo
+
+filtro_dois_cargos <- dois_cargos %>% filter(TIPO_VINCULO != "Função" ) %>% group_by(cpf_nome) %>% summarise(min(cpf_nome_uorg_jornada_cargo_funcao))
+
+cadastro_total_teste <- cadastro_total_teste %>% filter( cpf_nome_uorg_jornada_cargo_funcao %!in% filtro_dois_cargos$`min(cpf_nome_uorg_jornada_cargo_funcao)`)
+
+funcao <- cadastro_total_teste %>% group_by(cpf_nome) %>% filter (TIPO_VINCULO == "Função" ) %>% count()
+colnames(funcao)[2] <- "funcao"
+
+outro_vinculo <- cadastro_total_teste %>% group_by(cpf_nome) %>% filter (TIPO_VINCULO != "Função" ) %>% count()
+colnames(outro_vinculo)[2] <- "outro_vinculo"
+tipo_vinculo <- full_join(funcao, outro_vinculo)
+tipo_vinculo[is.na(tipo_vinculo) ] <- 0
+
+(datatable(tipo_vinculo %>% group_by(funcao, outro_vinculo) %>% count()))
+```
+
+```{r back up eval=FALSE, include=FALSE}
 cadastro_total <- rbind(cadastro, cadastro_aposentados)
 
 cadastro_total <- cadastro_total %>% mutate (cargo_funcao = if_else(DESCRICAO_CARGO != "Sem informação", DESCRICAO_CARGO, SITUACAO_VINCULO) )
@@ -254,7 +527,7 @@ funcao_0 <- cadastro_total %>% filter(cpf_nome %!in% funcao$cpf_nome) %>% select
 
 outro_vinculo_2 <- outro_vinculo %>% filter(outro_vinculo > 1) %>% select(cpf_nome)
 
-datatable(funcao_1_outro_1 <- cadastro_total %>% filter(cpf_nome %in% intersect(funcao$cpf_nome , outro_vinculo %>% filter(outro_vinculo == 1) %>% select(cpf_nome))))
+# datatable(funcao_1_outro_1 <- cadastro_total %>% filter(cpf_nome %in% intersect(funcao$cpf_nome , outro_vinculo %>% filter(outro_vinculo == 1) %>% select(cpf_nome))))
 
 funcao_1_outro_vinculo_2 <- (cadastro_total %>% filter (cpf_nome %in% outro_vinculo_2$cpf_nome, cpf_nome %in% funcao$cpf_nome))
 
@@ -271,7 +544,7 @@ funcao_1_outro_vinculo_2 <- funcao_1_outro_vinculo_2 %>% mutate(jornada = case_w
   mutate(lotacao = case_when(
   UORG_LOTACAO == "Inválido" ~ 0,
   UORG_LOTACAO == "Sem informação" ~ 0,
-  TRUE ~ 10
+  TRUE ~ 40
 )) %>% 
   mutate(uorg_jornada = (jornada+lotacao)) %>% mutate(cpf_nome_uorg_jornada_cargo_funcao = str_c(cpf_nome,uorg_jornada,cargo_funcao))
 
@@ -292,7 +565,7 @@ cadastro_total <- cadastro_total %>% mutate(jornada = case_when(
   mutate(lotacao = case_when(
   UORG_LOTACAO == "Inválido" ~ 0,
   UORG_LOTACAO == "Sem informação" ~ 0,
-  TRUE ~ 10
+  TRUE ~ 40
 )) %>% 
   mutate(uorg_jornada = (jornada+lotacao)) %>% mutate(cpf_nome_uorg_jornada_cargo_funcao = str_c(cpf_nome,uorg_jornada,cargo_funcao))
 
@@ -313,76 +586,44 @@ tipo_vinculo[is.na(tipo_vinculo) ] <- 0
 (datatable(tipo_vinculo %>% group_by(funcao, outro_vinculo) %>% count()))
 
 
+filtro_dois_cargos <- tipo_vinculo %>% filter(outro_vinculo == 2) %>% select(cpf_nome)
+
+dois_cargos <- (cadastro_total %>% filter (cpf_nome %in% filtro_dois_cargos$cpf_nome))
+
+dois_cargos <- dois_cargos %>% mutate(jornada = case_when(
+  JORNADA_DE_TRABALHO == "12 HORAS SEMANAIS" ~ 12,
+  JORNADA_DE_TRABALHO == "20 HORAS SEMANAIS" ~ 20,
+  JORNADA_DE_TRABALHO == "24 HORAS SEMANAIS" ~ 24,
+   JORNADA_DE_TRABALHO == "30 HORAS SEMANAIS" ~ 30,
+  JORNADA_DE_TRABALHO == "40 HORAS SEMANAIS" ~ 40,
+  JORNADA_DE_TRABALHO == "44 HORAS SEMANAIS" ~ 44,
+  JORNADA_DE_TRABALHO == "DEDICACAO EXCLUSIVA" ~ 60,
+  JORNADA_DE_TRABALHO == "DSPN. PERMANENTE" ~ 60
+)) %>% 
+  mutate(lotacao = case_when(
+  UORG_LOTACAO == "Inválido" ~ 0,
+  UORG_LOTACAO == "Sem informação" ~ 0,
+  TRUE ~ 40
+)) %>% 
+  mutate(uorg_jornada = (jornada+lotacao)) %>% mutate(cpf_nome_uorg_jornada_cargo_funcao = str_c(cpf_nome,uorg_jornada,cargo_funcao))
 
 #ajustar cadastro para manter apenas um registro por cpf_nome
 
 # filtrar pessoas com apenas um vínculo
 
+filtro_dois_cargos <- dois_cargos %>% filter(TIPO_VINCULO != "Função" ) %>% group_by(cpf_nome) %>% summarise(min(cpf_nome_uorg_jornada_cargo_funcao))
 
+cadastro_total_teste <- cadastro_total_teste %>% filter( cpf_nome_uorg_jornada_cargo_funcao %!in% filtro_dois_cargos$`min(cpf_nome_uorg_jornada_cargo_funcao)`)
 
+funcao <- cadastro_total_teste %>% group_by(cpf_nome) %>% filter (TIPO_VINCULO == "Função" ) %>% count()
+colnames(funcao)[2] <- "funcao"
 
+outro_vinculo <- cadastro_total_teste %>% group_by(cpf_nome) %>% filter (TIPO_VINCULO != "Função" ) %>% count()
+colnames(outro_vinculo)[2] <- "outro_vinculo"
+tipo_vinculo <- full_join(funcao, outro_vinculo)
+tipo_vinculo[is.na(tipo_vinculo) ] <- 0
 
-um_vinculo <- cadastro_total %>% group_by(cpf_nome) %>% count() %>% filter(n ==1)
-
-cadastro_funcao_um_vinculo <- cadastro_total %>% filter( cpf_nome %in% um_vinculo$cpf_nome ) %>% select(cpf_nome, FUNCAO, SIGLA_FUNCAO, NIVEL_FUNCAO)
-cadastro_cargo_um_vinculo <- cadastro_total %>% filter( cpf_nome %in% um_vinculo$cpf_nome ) %>% select ( -FUNCAO,- SIGLA_FUNCAO, -NIVEL_FUNCAO)
-cadastro_um_vinculo <- full_join(cadastro_cargo_um_vinculo,cadastro_funcao_um_vinculo)
-
-
-(datatable(cadastro_um_vinculo %>% group_by(cargo_funcao, DESCRICAO_CARGO) %>% count()))
-
-
-(datatable(cadastro_total %>% filter (cpf_nome %!in% cadastro_um_vinculo$cpf_nome) %>% group_by(cpf_nome) %>% count()))
-
-(datatable(cadastro_total %>% filter (cargo_funcao == "Inválido" ) %>% group_by(cpf_nome) %>% count()))
-
-
-
-
-cadastro_funcao_multiplo_vinculo <- cadastro_total %>% filter( cpf_nome %!in% um_vinculo$cpf_nome, FUNCAO %!in% c("Sem informação", NA, "Inativo")  ) %>% select(cpf_nome, FUNCAO, SIGLA_FUNCAO, NIVEL_FUNCAO)
-cadastro_cargo_multiplo_vinculo <- cadastro_total %>% filter( cpf_nome %!in% um_vinculo$cpf_nome,FUNCAO %in% c ("Sem informação", "Inativo") ) %>% select ( -FUNCAO,- SIGLA_FUNCAO, -NIVEL_FUNCAO)
-cadastro_multiplo_vinculo <- full_join(cadastro_cargo_multiplo_vinculo,cadastro_funcao_multiplo_vinculo)
-
-(duplicados <- (cadastro_multiplo_vinculo %>% group_by(cpf_nome) %>% count()) %>% filter(n>1))
-
-
-(singulares <- (cadastro_multiplo_vinculo %>% group_by(cpf_nome) %>% count()) %>% filter(n==1))
-
-
-
-cadastro_funcao_singulares <- cadastro_total %>% filter( cpf_nome %in% singulares$cpf_nome, FUNCAO %!in% c("Sem informação", NA, "Inativo") ) %>% select(cpf_nome, FUNCAO, SIGLA_FUNCAO, NIVEL_FUNCAO)
-cadastro_cargo_singulares <- cadastro_total %>% filter( cpf_nome %in% singulares$cpf_nome,FUNCAO %in% c ("Sem informação", "Inativo") ) %>% select ( -FUNCAO,- SIGLA_FUNCAO, -NIVEL_FUNCAO)
-cadastro_singulares <- full_join(cadastro_cargo_singulares,cadastro_funcao_singulares)
-
-
-(datatable(cadastro_multiplo_vinculo %>% filter(cpf_nome %in% duplicados$cpf_nome) ))
-
-
-(datatable(cadastro_multiplo_vinculo %>% filter(cpf_nome %in% duplicados$cpf_nome) ))
-
-
-datatable(duplicados %>% filter())
-
-datatable(duplicados_fase_2 <- cadastro_total %>% filter(cpf_nome %!in% c(cadastro_um_vinculo$cpf_nome, cadastro_singulares$cpf_nome)))
-
-datatable(duplicados_fase_2 %>%filter(FUNCAO != "Sem informação") %>% group_by(cpf_nome, cargo_funcao) %>% count())
-datatable(duplicados_fase_2 %>%filter(FUNCAO == "Sem informação") %>% group_by(cpf_nome, cargo_funcao) %>% count())
-datatable(duplicados_fase_2 %>%filter (SITUACAO_VINCULO %!in% c("APOSENTADO" )) %>% group_by(cpf_nome) %>% count())
-
-datatable(duplicados_fase_2 %>%  group_by(cpf_nome, TIPO_VINCULO) %>% count() %>% pivot_wider(names_from =  "TIPO_VINCULO",values_from = n))
-
-cpf_nome_cargo_filtro <- cadastro_multiplo_vinculo %>% filter(cpf_nome %in% duplicados$cpf_nome, DESCRICAO_CARGO %in% c("Inválido", "PROFESSOR DO MAGISTERIO SUPERIOR")) 
-
-# cadastro_funcao <- cadastro_total %>% filter(FUNCAO %!in% c("Sem informação", NA, "Inativo") )
-# cadastro_cargo <- cadastro_total %>% filter(FUNCAO %in% c("Sem informação", "Inativo") )
-# cadastro_total_2 <- full_join(cadastro_cargo,cadastro_funcao)
-# 
-# datatable(cadastro_total_2 %>% group_by(cpf_nome) %>% count())
-# 
-# cadastro_funcao <- cadastro_total %>% filter(FUNCAO %!in% c("Sem informação", NA) ) %>% select(NOME, FUNCAO, SIGLA_FUNCAO, NIVEL_FUNCAO)
-# cadastro_cargo <- cadastro_total %>% filter(FUNCAO == "Sem informação" ) %>% select ( -FUNCAO,- SIGLA_FUNCAO, -NIVEL_FUNCAO)
-# cadastro_total <- full_join(cadastro_cargo,cadastro_funcao)
-
+(datatable(tipo_vinculo %>% group_by(funcao, outro_vinculo) %>% count()))
 ```
 
 
