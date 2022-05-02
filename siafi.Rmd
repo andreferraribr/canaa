@@ -251,14 +251,17 @@ Ajustar colunas da tabela de casdatro dos aposentado para viabilizar a junção 
 
 
 
-servidores <- read_csv("servidores_202112.csv")
+servidores <- read_csv("servidores_202112.csv") %>% filter(cpf_nome %in% ordenador_ug$cpf_nome)
 
 
 
 servidores <- servidores %>% select(cpf_nome,`REMUNERAÇÃO BÁSICA BRUTA (R$)`,`REMUNERAÇÃO BÁSICA BRUTA (U$)`) %>% mutate(remuneracao =`REMUNERAÇÃO BÁSICA BRUTA (R$)`+ 5*`REMUNERAÇÃO BÁSICA BRUTA (U$)` )
 
+servidores <- servidores %>% group_by(cpf_nome) %>% summarise(remuneracao = sum(remuneracao))
 
-cadastro <- read_csv("cadastro_202112.csv")
+
+
+cadastro <- read_csv("cadastro_202112.csv")%>% filter(cpf_nome %in% ordenador_ug$cpf_nome)
 
 cadastro <- cadastro %>% mutate(cpf_nome_uorg = str_c(cpf_nome, UORG_EXERCICIO)) %>% mutate(cpf_nome_uorg_jornada = str_c(cpf_nome_uorg,JORNADA_DE_TRABALHO))
 
@@ -277,7 +280,7 @@ cadastro_aposentados <- cadastro_aposentados %>% select(colnames(cadastro))
 ```
 
 ```{r}
-cadastro_total <- rbind(cadastro, cadastro_aposentados)
+cadastro_total <- rbind(cadastro, cadastro_aposentados) %>% filter(cpf_nome %in% ordenador_ug$cpf_nome)
 
 cadastro_total <- cadastro_total %>% mutate (cargo_funcao = if_else(DESCRICAO_CARGO != "Sem informação", DESCRICAO_CARGO, SITUACAO_VINCULO) )
 
@@ -345,14 +348,27 @@ cadastro_um_vinculo <- full_join(cadastro_cargo_um_vinculo,cadastro_funcao_um_vi
 
 (datatable(cadastro_um_vinculo %>% group_by(cargo_funcao, DESCRICAO_CARGO) %>% count()))
 
-filtro_dois_vinculos <- tipo_vinculo %>% filter(q_vinculos == 2) %>% summarise(cpf_nome)
+filtro_dois_vinculos <- tipo_vinculo %>% filter(q_vinculos == 2) %>% summarise(min(cpf_nome))
 
-cadastro_funcao_dois_vinculos <- cadastro_total %>% filter( cpf_nome %in% c(filtro_dois_vinculos$cpf_nome), FUNCAO %!in% c("Sem informação", NA, "Inativo") ) %>% select(cpf_nome, FUNCAO, SIGLA_FUNCAO, NIVEL_FUNCAO)
-cadastro_cargo_dois_vinculos <- cadastro_total%>% filter( cpf_nome %in% c(filtro_dois_vinculos$cpf_nome, FUNCAO %in% c ("Sem informação", "Inativo") )) %>% select ( -FUNCAO,- SIGLA_FUNCAO, -NIVEL_FUNCAO)
+filtro_dois_vinculos_min <- cadastro_total %>% filter(cpf_nome %in% filtro_dois_vinculos$cpf_nome ) %>% group_by(cpf_nome) %>% summarise(min(cpf_nome_uorg_jornada_cargo_funcao))
+
+
+
+
+
+
+cadastro_funcao_dois_vinculos <- cadastro_total %>% filter( cpf_nome %in% c(filtro_dois_vinculos$cpf_nome), FUNCAO %!in% c("Sem informação", NA, "Inativo")   ) %>% select(cpf_nome, FUNCAO, SIGLA_FUNCAO, NIVEL_FUNCAO)
+cadastro_cargo_dois_vinculos <- cadastro_total%>% filter( cpf_nome %in% c(filtro_dois_vinculos$cpf_nome , FUNCAO %in% c("Sem informação", NA, "Inativo")  )) %>% select ( -FUNCAO,- SIGLA_FUNCAO, -NIVEL_FUNCAO)
 cadastro_dois_vinculos <- full_join(cadastro_cargo_dois_vinculos,cadastro_funcao_dois_vinculos)
-
+cadastro_dois_vinculos <- cadastro_dois_vinculos %>% filter( cpf_nome_uorg_jornada_cargo_funcao %!in% filtro_dois_vinculos_min$`min(cpf_nome_uorg_jornada_cargo_funcao)`)
 
 ordenador_cadastro <- rbind(cadastro_um_vinculo, cadastro_dois_vinculos)
+
+pessoas <- full_join(servidores,ordenador_cadastro)
+
+pessoas <- left_join(tabelao , servidores)
+
+tabelao <- left_join(tabelao, expostas)
 
 ```
 
