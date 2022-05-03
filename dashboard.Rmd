@@ -1,0 +1,121 @@
+---
+title: "dashboard"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: fill
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(ggplot2)
+library(plotly)
+library(DT)
+library(knitr)
+library(shiny)
+library(shinyWidgets)
+library(lubridate)
+library(tidyverse)
+library(janitor)
+library(scales)
+library(highcharter)
+library(esquisse)
+library(ggeasy)
+library(ggx)
+```
+
+
+```{r}
+ordenador_ug <- read_csv("ordenador_ug.csv")
+
+pessoas <- read_csv("pessoas.csv")
+```
+
+
+Row
+-----------------------------------------------------------------------
+
+### Chart A
+
+```{r echo=FALSE}
+
+
+
+filtro <- pessoas %>% filter(cargo_funcao == "NOMEADO CARGO COMIS.") %>% summarise(cpf_nome)
+
+valor <- sum(ordenador_ug %>% filter(cpf_nome %in% c(filtro$cpf_nome)) %>% summarise(saldo =   sum(`PAGAMENTOS TOTAIS (EXERCICIO E RAP)`)) )
+
+
+
+
+fig <- plot_ly(
+  domain = list(x = c(0, 1), y = c(0, 1)),
+  value = valor,
+  title = list(text = "Speed"),
+  type = "indicator",
+  mode = "gauge+number",
+  gauge = list(
+    axis =list(range = list(NULL, sum(ordenador_ug$`PAGAMENTOS TOTAIS (EXERCICIO E RAP)`)))) )
+fig <- fig %>%
+  layout(margin = list(l=20,r=30))
+
+fig
+
+
+
+```
+
+
+
+### Chart B
+
+```{r echo=FALSE}
+library(plotly)
+
+filtro <- pessoas %>% filter(DESCRICAO_CARGO == "AUDITOR FEDERAL DE FINANCAS E CONTROLE") %>% summarise(cpf_nome)
+
+
+valor <- sum(ordenador_ug %>% filter(cpf_nome %in% c(filtro$cpf_nome)) %>% summarise(saldo =   sum(`RECEITA ORCAMENTARIA (BRUTA)`)) )
+
+fig <- plot_ly(
+  domain = list(x = c(0, 1), y = c(0, 1)),
+  value = valor,
+  title = list(text = "Speed"),
+  type = "indicator",
+  mode = "gauge+number",
+  gauge = list(
+    axis =list(range = list(NULL, sum(ordenador_ug$`RECEITA ORCAMENTARIA (BRUTA)`)))) )
+fig <- fig %>%
+  layout(margin = list(l=20,r=30))
+
+fig
+
+
+
+```
+
+### Chart C
+
+```{r}
+
+```
+
+
+
+### Chart d
+
+```{r}
+
+```
+
+
+Row
+-----------------------------------------------------------------------
+
+### table
+
+```{r}
+
+```
+
+

@@ -319,12 +319,12 @@ outro_vinculo <- cadastro_total %>% group_by(cpf_nome) %>% filter (TIPO_VINCULO 
 colnames(outro_vinculo)[2] <- "outro_vinculo"
 tipo_vinculo <- full_join(funcao, outro_vinculo)
 tipo_vinculo[is.na(tipo_vinculo) ] <- 0
-
-(datatable(tipo_vinculo %>% group_by(funcao, outro_vinculo) %>% count()))
-
-
-datatable(cadastro_total %>% filter(TIPO_VINCULO != "Função" ) %>% group_by(cpf_nome) %>% summarise(min(cpf_nome_uorg_jornada_cargo_funcao)))
-datatable(cadastro_total %>% filter(TIPO_VINCULO == "Função" ) %>% group_by(cpf_nome) %>% summarise(min(cpf_nome_uorg_jornada_cargo_funcao)))
+# 
+# (datatable(tipo_vinculo %>% group_by(funcao, outro_vinculo) %>% count()))
+# 
+# 
+# datatable(cadastro_total %>% filter(TIPO_VINCULO != "Função" ) %>% group_by(cpf_nome) %>% summarise(min(cpf_nome_uorg_jornada_cargo_funcao)))
+# datatable(cadastro_total %>% filter(TIPO_VINCULO == "Função" ) %>% group_by(cpf_nome) %>% summarise(min(cpf_nome_uorg_jornada_cargo_funcao)))
 
 filtro_1_vinculo <- cadastro_total %>% filter(TIPO_VINCULO != "Função" ) %>% group_by(cpf_nome) %>% summarise(min(cpf_nome_uorg_jornada_cargo_funcao))
 
@@ -341,10 +341,10 @@ colnames(outro_vinculo)[2] <- "outro_vinculo"
 tipo_vinculo <- full_join(funcao, outro_vinculo)
 tipo_vinculo[is.na(tipo_vinculo) ] <- 0
 
-(datatable(tipo_vinculo %>% group_by(funcao, outro_vinculo) %>% count()))
+# (datatable(tipo_vinculo %>% group_by(funcao, outro_vinculo) %>% count()))
 
 tipo_vinculo <- tipo_vinculo %>% mutate(q_vinculos = funcao + outro_vinculo)
-(datatable(tipo_vinculo %>% group_by( q_vinculos) %>% count()))
+# (datatable(tipo_vinculo %>% group_by( q_vinculos) %>% count()))
 
 filtro_um_vinculo <- tipo_vinculo %>% filter(q_vinculos == 1) %>% summarise(cpf_nome)
 
@@ -353,7 +353,7 @@ cadastro_cargo_um_vinculo <- cadastro_total %>% filter( cpf_nome %in% c(filtro_u
 cadastro_um_vinculo <- full_join(cadastro_cargo_um_vinculo,cadastro_funcao_um_vinculo)
 
 
-(datatable(cadastro_um_vinculo %>% group_by(cargo_funcao, DESCRICAO_CARGO) %>% count()))
+# (datatable(cadastro_um_vinculo %>% group_by(cargo_funcao, DESCRICAO_CARGO) %>% count()))
 
 filtro_dois_vinculos <- tipo_vinculo %>% filter(q_vinculos == 2) %>% summarise(min(cpf_nome))
 
@@ -399,7 +399,7 @@ colnames(outro_vinculo)[2] <- "outro_vinculo"
 tipo_vinculo <- full_join(funcao, outro_vinculo)
 tipo_vinculo[is.na(tipo_vinculo) ] <- 0
 
-(datatable(tipo_vinculo %>% group_by(funcao, outro_vinculo) %>% count()))
+# (datatable(tipo_vinculo %>% group_by(funcao, outro_vinculo) %>% count()))
 
 funcao_0 <- cadastro_total %>% filter(cpf_nome %!in% funcao$cpf_nome) %>% select(cpf_nome)
 
@@ -426,9 +426,9 @@ funcao_1_outro_vinculo_2 <- funcao_1_outro_vinculo_2 %>% mutate(jornada = case_w
 )) %>% 
   mutate(uorg_jornada = (jornada+lotacao)) %>% mutate(cpf_nome_uorg_jornada_cargo_funcao = str_c(cpf_nome,uorg_jornada,cargo_funcao))
 
-datatable(funcao_1_outro_vinculo_2 %>%group_by(cpf_nome) %>% summarise(max(cpf_nome_uorg_jornada_cargo_funcao)))
-
-datatable(funcao_1_outro_vinculo_2 %>% group_by(cpf_nome) %>% summarise(min(cpf_nome_uorg_jornada_cargo_funcao)))
+# datatable(funcao_1_outro_vinculo_2 %>%group_by(cpf_nome) %>% summarise(max(cpf_nome_uorg_jornada_cargo_funcao)))
+# 
+# datatable(funcao_1_outro_vinculo_2 %>% group_by(cpf_nome) %>% summarise(min(cpf_nome_uorg_jornada_cargo_funcao)))
 
 cadastro_total <- cadastro_total %>% mutate(jornada = case_when(
   JORNADA_DE_TRABALHO == "12 HORAS SEMANAIS" ~ 12,
@@ -461,7 +461,7 @@ colnames(outro_vinculo)[2] <- "outro_vinculo"
 tipo_vinculo <- full_join(funcao, outro_vinculo)
 tipo_vinculo[is.na(tipo_vinculo) ] <- 0
 
-(datatable(tipo_vinculo %>% group_by(funcao, outro_vinculo) %>% count()))
+# (datatable(tipo_vinculo %>% group_by(funcao, outro_vinculo) %>% count()))
 
 
 filtro_dois_cargos <- tipo_vinculo %>% filter(outro_vinculo == 2) %>% select(cpf_nome)
@@ -501,7 +501,7 @@ colnames(outro_vinculo)[2] <- "outro_vinculo"
 tipo_vinculo <- full_join(funcao, outro_vinculo)
 tipo_vinculo[is.na(tipo_vinculo) ] <- 0
 
-(datatable(tipo_vinculo %>% group_by(funcao, outro_vinculo) %>% count()))
+# (datatable(tipo_vinculo %>% group_by(funcao, outro_vinculo) %>% count()))
 
 
 
@@ -554,6 +554,73 @@ pessoas_ug  <- pessoas_ug  %>% mutate(freq = ifelse(is.na(freq), 0, freq))
 
 
 (wordcloud2(data = pessoas_ug, color = "random-light", backgroundColor = "grey" ))
+```
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+
+### Chart A
+
+```{r}
+# 
+# filtro <- pessoas %>% filter(cargo_funcao == "NOMEADO CARGO COMIS.") %>% summarise(cpf_nome)
+# 
+# valor <- sum(ordenador_ug %>% filter(cpf_nome %in% c(filtro$cpf_nome)) %>% summarise(saldo =   sum(`PAGAMENTOS TOTAIS (EXERCICIO E RAP)`)) )
+
+
+
+
+fig <- plot_ly(
+  domain = list(x = c(0, 1), y = c(0, 1)),
+  value = valor,
+  title = list(text = "Speed"),
+  type = "indicator",
+  mode = "gauge+number",
+  gauge = list(
+    axis =list(range = list(NULL, sum(ordenador_ug$`PAGAMENTOS TOTAIS (EXERCICIO E RAP)`)))) )
+fig <- fig %>%
+  layout(margin = list(l=20,r=30))
+
+fig
+
+
+
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### Chart B
+
+```{r}
+library(plotly)
+# 
+# filtro <- pessoas %>% filter(DESCRICAO_CARGO == "AUDITOR FEDERAL DE FINANCAS E CONTROLE") %>% summarise(cpf_nome)
+# 
+# 
+# valor <- sum(ordenador_ug %>% filter(cpf_nome %in% c(filtro$cpf_nome)) %>% summarise(saldo =   sum(`RECEITA ORCAMENTARIA (BRUTA)`)) )
+
+fig <- plot_ly(
+  domain = list(x = c(0, 1), y = c(0, 1)),
+  value = valor,
+  title = list(text = "Speed"),
+  type = "indicator",
+  mode = "gauge+number",
+  gauge = list(
+    axis =list(range = list(NULL, sum(ordenador_ug$`PAGAMENTOS TOTAIS (EXERCICIO E RAP)`)))) )
+fig <- fig %>%
+  layout(margin = list(l=20,r=30))
+
+fig
+
+
+
+```
+
+### Chart C
+
+```{r}
+
 ```
 
 
