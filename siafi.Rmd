@@ -144,8 +144,23 @@ ordenador_ug <- ordenador_ug %>% pivot_wider(names_from = "item", values_from = 
 
 ordenador_ug  <- ordenador_ug  %>% replace(is.na(.), 0)
 
+write_csv(ordenador_ug,"ordenador_ug.csv")
+
+ordenador_pbi <- ordenador_ug %>% select(`UGE - Município Código SIAFI/SRF`, `UG Executora Código`,`UG Executora Nome`,`UG Executora Nome Reduzido`,`UGE - Município Nome`,`UGE - UF Sigla`,`UGE - UF Nome`,cpf_nome,`ATIVO CIRCULANTE`,`ATIVO NAO CIRCULANTE`,`PASSIVO CIRCULANTE`,`PASSIVO NAO-CIRCULANTE`,`RECEITA ORCAMENTARIA (BRUTA)`,`PAGAMENTOS TOTAIS (EXERCICIO E RAP)`,`Órgão UGE - Poder Nome`,`Órgão UGE Nome`,`Órgão UGE - Órgão Máximo Nome`)
+
+ordenador_pbi <- ordenador_pbi %>% mutate(siafi_id = (`UGE - Município Código SIAFI/SRF`)  ,ativos = `ATIVO CIRCULANTE`+`PASSIVO NAO-CIRCULANTE`, passivos = `PASSIVO CIRCULANTE`+`PASSIVO NAO-CIRCULANTE`, receita = `RECEITA ORCAMENTARIA (BRUTA)`, despesa = `PAGAMENTOS TOTAIS (EXERCICIO E RAP)`) 
+ordenador_pbi <- ordenador_pbi %>%  select( siafi_id,`UG Executora Código`,`UG Executora Nome`,`UG Executora Nome Reduzido`,`UGE - Município Nome`,`UGE - UF Sigla`,`UGE - UF Nome`,cpf_nome,`Órgão UGE - Poder Nome`,`Órgão UGE Nome`,`Órgão UGE - Órgão Máximo Nome`, receita, despesa, ativos, passivos)
 
 
+
+municipios <- read_csv("https://raw.githubusercontent.com/kelvins/Municipios-Brasileiros/main/csv/municipios.csv") %>% select("siafi_id", "latitude", "longitude")
+
+
+ordenador_pbi <- left_join(ordenador_pbi, municipios, by = "siafi_id")
+
+write_csv(ordenador_pbi,"ordenador_pbi.csv")
+
+writexl::write_xlsx(ordenador_pbi,"ordenador_pbi.xlsx")
 
 ```
 
@@ -291,6 +306,8 @@ cadastro_total <- cadastro_total %>% mutate (cargo_funcao = if_else(DESCRICAO_CA
 # excluir vínculos de Conselho Fiscal de empresas...
 cadastro_total <- cadastro_total %>% filter(SITUACAO_VINCULO != "SEM VINCULO")
 
+cadastro_total <- cadastro_total %>% filter(cpf_nome != "***.059.671-**JARBAS JOSE VALENTE")
+
 
 # criar variáveis para filtrar o cargo menos relevante (menor jornada de trabalho e lotação inválida/sem informação)
 cadastro_total <- cadastro_total%>% mutate(jornada = case_when(
@@ -375,8 +392,14 @@ pessoas <- full_join(servidores,ordenador_cadastro)
 
 pessoas <- pessoas %>% mutate( exposata = if_else(cpf_nome %in% c(expostas$cpf_nome), "sim","não"))
 
+write_csv(pessoas, "pessoas.csv")
+
+pessoas_pbi <- pessoas %>% select(cpf_nome,DESCRICAO_CARGO,TIPO_VINCULO,SITUACAO_VINCULO,cargo_funcao,exposata)
 
 
+write_csv(pessoas_pbi, "pessoas_pbi.csv")
+
+writexl::write_xlsx(pessoas_pbi, "pessoas_pbi.xlsx")
 ```
 
 ```{r back up eval=FALSE, include=FALSE}
@@ -555,73 +578,4 @@ pessoas_ug  <- pessoas_ug  %>% mutate(freq = ifelse(is.na(freq), 0, freq))
 
 (wordcloud2(data = pessoas_ug, color = "random-light", backgroundColor = "grey" ))
 ```
-
-Column {data-width=650}
------------------------------------------------------------------------
-
-### Chart A
-
-```{r}
-# 
-# filtro <- pessoas %>% filter(cargo_funcao == "NOMEADO CARGO COMIS.") %>% summarise(cpf_nome)
-# 
-# valor <- sum(ordenador_ug %>% filter(cpf_nome %in% c(filtro$cpf_nome)) %>% summarise(saldo =   sum(`PAGAMENTOS TOTAIS (EXERCICIO E RAP)`)) )
-
-
-
-
-fig <- plot_ly(
-  domain = list(x = c(0, 1), y = c(0, 1)),
-  value = valor,
-  title = list(text = "Speed"),
-  type = "indicator",
-  mode = "gauge+number",
-  gauge = list(
-    axis =list(range = list(NULL, sum(ordenador_ug$`PAGAMENTOS TOTAIS (EXERCICIO E RAP)`)))) )
-fig <- fig %>%
-  layout(margin = list(l=20,r=30))
-
-fig
-
-
-
-```
-
-Column {data-width=350}
------------------------------------------------------------------------
-
-### Chart B
-
-```{r}
-library(plotly)
-# 
-# filtro <- pessoas %>% filter(DESCRICAO_CARGO == "AUDITOR FEDERAL DE FINANCAS E CONTROLE") %>% summarise(cpf_nome)
-# 
-# 
-# valor <- sum(ordenador_ug %>% filter(cpf_nome %in% c(filtro$cpf_nome)) %>% summarise(saldo =   sum(`RECEITA ORCAMENTARIA (BRUTA)`)) )
-
-fig <- plot_ly(
-  domain = list(x = c(0, 1), y = c(0, 1)),
-  value = valor,
-  title = list(text = "Speed"),
-  type = "indicator",
-  mode = "gauge+number",
-  gauge = list(
-    axis =list(range = list(NULL, sum(ordenador_ug$`PAGAMENTOS TOTAIS (EXERCICIO E RAP)`)))) )
-fig <- fig %>%
-  layout(margin = list(l=20,r=30))
-
-fig
-
-
-
-```
-
-### Chart C
-
-```{r}
-
-```
-
-
 

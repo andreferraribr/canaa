@@ -1,9 +1,13 @@
 ---
-title: "dashboard"
+title: "Perfil dos Ordenadores de Despesa do Executivo Federal"
 output: 
   flexdashboard::flex_dashboard:
     orientation: rows
-    vertical_layout: fill
+    vertical_layout: fill  
+    theme:
+      version: 4
+      bootswatch: cosmo
+runtime: shiny
 ---
 
 ```{r setup, include=FALSE}
@@ -22,44 +26,108 @@ library(highcharter)
 library(esquisse)
 library(ggeasy)
 library(ggx)
+library(leaflet)
+```
+
+```{r tabela reais}
+tabela_reais = function (df,coluna = NULL) {
+      datatable((df)%>%
+  # "row" para o total aparecer na linha, ou seja, totalizar os valores de uma coluna
+  adorn_totals("row") ,
+      filter = 'top', 
+      rownames = FALSE,
+      extensions = 'Buttons',
+      options = list( 
+                  order = list (2, 'desc'),
+                  dom = "Blfrtip",
+                  buttons = 
+                    list("copy", list(
+                      extend = "collection",
+                      buttons = c("csv", "excel", "pdf"),
+                      text = "Download" ) ),
+                  lengthMenu = list( c(-1, 4, 10,20),
+                                     c( "tudo",4, 10, 20)),
+                  pageLength = 4 )
+      )%>%
+  formatRound(
+  # formatar apenas as colunas numericas.
+  # sapply para identificar as colunas numericas e combinar com o parametro COLUNA
+    # ((ncol(df %>% select_if(is.character))+1):(ncol(df )+1)),
+    # http://datamining.togaware.com/survivor/Remove_Non_Numeric.html
+    (c(colnames(df[,sapply(df, is.numeric)]), coluna)),
+  digits = 2,
+  interval = 3,
+  mark = ".",
+  dec.mark = ","
+) 
+}
+```
+
+```{r negar %in%}
+# https://www.r-bloggers.com/the-notin-operator/
+'%!in%' <- Negate('%in%')
+```
+
+```{r}
+ordenador_pbi <- read_csv("ordenador_pbi.csv")
+
+pessoas_pbi <- read_csv("pessoas_pbi.csv")
+```
+
+Sidebar {.sidebar}
+--------------------------------
+
+```{r echo=FALSE}
+
+checkboxGroupInput("zzz", "     ", choices = c(), selected = c() )
+
+checkboxGroupInput("auditor", "Auditor Finanças e Controle", choices =sort(unique(pessoas_pbi$auditor_tesouro)), selected =unique(pessoas_pbi$auditor_tesouro) )
+
+checkboxGroupInput("comiss", "Cargo Comissionado", choices =sort(unique(pessoas_pbi$comissionado)), selected =unique(pessoas_pbi$comissionado) )
+
+checkboxGroupInput("militar", "Militar", choices =sort(unique(pessoas_pbi$militar)), selected =unique(pessoas_pbi$militar) )
+
+checkboxGroupInput("exposta", "Pessoa Politicamente Exposta", choices =sort(unique(pessoas_pbi$exposata)), selected =unique(pessoas_pbi$exposata) )
+# 
+# selectizeInput("UF", "UF", choices = c(unique(ordenador_pbi$`UGE - UF Sigla`)), selected =   c(unique(ordenador_pbi$`UGE - UF Sigla`)), multiInput())
+
+# selectizeInput("UF", "UF", choices = c(sort(unique(ordenador_pbi$`UGE - UF Sigla`))), selected = NULL, multiple = FALSE, options = NULL)
 ```
 
 
 ```{r}
-ordenador_ug <- read_csv("ordenador_ug.csv")
 
-pessoas <- read_csv("pessoas.csv")
+
+reactive_pessoas <- reactive(pessoas_pbi %>% filter(militar %in% input$militar, comissionado %in% input$comiss , auditor_tesouro %in% input$auditor, exposata %in% input$exposta ))
+
+
+
+reactive_ordenador <- reactive(ordenador_pbi %>% filter(cpf_nome %in% reactive_pessoas()$cpf_nome))
 ```
-
-
-Row
+  
+Row {data-height=180}
 -----------------------------------------------------------------------
 
-### Chart A
+
 
 ```{r echo=FALSE}
 
 
 
-filtro <- pessoas %>% filter(cargo_funcao == "NOMEADO CARGO COMIS.") %>% summarise(cpf_nome)
-
-valor <- sum(ordenador_ug %>% filter(cpf_nome %in% c(filtro$cpf_nome)) %>% summarise(saldo =   sum(`PAGAMENTOS TOTAIS (EXERCICIO E RAP)`)) )
 
 
 
 
-fig <- plot_ly(
+
+ renderPlotly( plot_ly(
   domain = list(x = c(0, 1), y = c(0, 1)),
-  value = valor,
-  title = list(text = "Speed"),
+  value = sum(reactive_ordenador()  %>%  summarise(saldo =   despesa)) ,
+  title = list(text = "Despesa"),
   type = "indicator",
   mode = "gauge+number",
   gauge = list(
-    axis =list(range = list(NULL, sum(ordenador_ug$`PAGAMENTOS TOTAIS (EXERCICIO E RAP)`)))) )
-fig <- fig %>%
-  layout(margin = list(l=20,r=30))
+    axis =list(range = list(NULL, sum(ordenador_pbi$despesa)))) ))
 
-fig
 
 
 
@@ -67,55 +135,103 @@ fig
 
 
 
-### Chart B
 
-```{r echo=FALSE}
+```{r}
 library(plotly)
 
-filtro <- pessoas %>% filter(DESCRICAO_CARGO == "AUDITOR FEDERAL DE FINANCAS E CONTROLE") %>% summarise(cpf_nome)
 
 
-valor <- sum(ordenador_ug %>% filter(cpf_nome %in% c(filtro$cpf_nome)) %>% summarise(saldo =   sum(`RECEITA ORCAMENTARIA (BRUTA)`)) )
-
-fig <- plot_ly(
+renderPlotly(plot_ly(
   domain = list(x = c(0, 1), y = c(0, 1)),
-  value = valor,
-  title = list(text = "Speed"),
+  value = sum(reactive_ordenador()  %>%  summarise(saldo =   receita)),
+  title = list(text = "Receita"),
   type = "indicator",
   mode = "gauge+number",
   gauge = list(
-    axis =list(range = list(NULL, sum(ordenador_ug$`RECEITA ORCAMENTARIA (BRUTA)`)))) )
-fig <- fig %>%
-  layout(margin = list(l=20,r=30))
-
-fig
+    axis =list(range = list(NULL, sum(ordenador_pbi$receita)))) ))
 
 
 
 ```
 
-### Chart C
 
 ```{r}
 
+
+renderPlotly( plot_ly(
+  domain = list(x = c(0, 1), y = c(0, 1)),
+  value = sum(reactive_ordenador()  %>%  summarise(saldo =   ativos)),
+  title = list(text = "Ativos"),
+  type = "indicator",
+  mode = "gauge+number",
+  gauge = list(
+    axis =list(range = list(NULL, sum(ordenador_pbi$ativos)))) ))
 ```
 
 
 
-### Chart d
+
 
 ```{r}
 
+
+renderPlotly (plot_ly(
+  domain = list(x = c(0, 1), y = c(0, 1)),
+  value = sum(reactive_ordenador()  %>%  summarise(saldo =   passivos)),
+  title = list(text = "Passivos"),
+  type = "indicator",
+  mode = "gauge+number",
+  gauge = list(
+    axis =list(range = list(NULL, sum(ordenador_pbi$passivos)))) ))
 ```
 
 
 Row
 -----------------------------------------------------------------------
 
-### table
 
-```{r}
+### mapa
+```{r, width = 300 }
 
+
+renderLeaflet( leaflet() %>% addTiles() %>%
+  addMarkers(data=reactive_ordenador(),
+    clusterOptions = markerClusterOptions(),
+    clusterId = "quakesCluster") %>%
+  addEasyButton(easyButton(
+    states = list(
+      easyButtonState(
+        stateName="unfrozen-markers",
+        icon="ion-toggle",
+        title="Freeze Clusters",
+        onClick = JS("
+          function(btn, map) {
+            var clusterManager =
+              map.layerManager.getLayer('cluster', 'quakesCluster');
+            clusterManager.freezeAtZoom();
+            btn.state('frozen-markers');
+          }")
+      ),
+      easyButtonState(
+        stateName="frozen-markers",
+        icon="ion-toggle-filled",
+        title="UnFreeze Clusters",
+        onClick = JS("
+          function(btn, map) {
+            var clusterManager =
+              map.layerManager.getLayer('cluster', 'quakesCluster');
+            clusterManager.unfreeze();
+            btn.state('unfrozen-markers');
+          }")
+      )
+    )
+  )))
+```
+
+### tabela
+
+```{r, width = 600}
+renderDataTable(  tabela_reais(reactive_ordenador() %>% group_by(`UG Executora Nome`, `Órgão UGE Nome`) %>% summarise(despesa =sum(despesa), receita = sum(receita), ativos = sum(ativos), passivos =  sum(passivos)  )))
 ```
 
 
