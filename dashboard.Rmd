@@ -71,6 +71,8 @@ tabela_reais = function (df,coluna = NULL) {
 ```{r}
 ordenador_pbi <- read_csv("ordenador_pbi.csv")
 
+ordenador_pbi <- ordenador_pbi %>% mutate(ug_divida = if_else(`UG Executora Nome Reduzido` == "CODIV/STN", "Ug da Dívida (CODIV/STN)", "Demais"))
+
 pessoas_pbi <- read_csv("pessoas_pbi.csv")
 ```
 
@@ -88,6 +90,8 @@ checkboxGroupInput("comiss", "Cargo Comissionado", choices =sort(unique(pessoas_
 checkboxGroupInput("militar", "Militar", choices =sort(unique(pessoas_pbi$militar)), selected =unique(pessoas_pbi$militar) )
 
 checkboxGroupInput("exposta", "Pessoa Politicamente Exposta", choices =sort(unique(pessoas_pbi$exposata)), selected =unique(pessoas_pbi$exposata) )
+checkboxGroupInput("ug_divida", "Ug da Dívida (CODIV/STN)", choices =sort(unique(ordenador_pbi$ug_divida)), selected =unique(ordenador_pbi$ug_divida) )
+
 # 
 # selectizeInput("UF", "UF", choices = c(unique(ordenador_pbi$`UGE - UF Sigla`)), selected =   c(unique(ordenador_pbi$`UGE - UF Sigla`)), multiInput())
 
@@ -102,7 +106,7 @@ reactive_pessoas <- reactive(pessoas_pbi %>% filter(militar %in% input$militar, 
 
 
 
-reactive_ordenador <- reactive(ordenador_pbi %>% filter(cpf_nome %in% reactive_pessoas()$cpf_nome))
+reactive_ordenador <- reactive(ordenador_pbi %>% filter(cpf_nome %in% reactive_pessoas()$cpf_nome, ug_divida %in% input$ug_divida))
 ```
   
 Row {data-height=180}
