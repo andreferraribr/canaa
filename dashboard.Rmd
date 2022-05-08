@@ -71,7 +71,7 @@ tabela_reais = function (df,coluna = NULL) {
 ```{r}
 ordenador_pbi <- read_csv("ordenador_pbi.csv")
 
-ordenador_pbi <- ordenador_pbi %>% mutate(ug_divida = if_else(`UG Executora Nome Reduzido` == "CODIV/STN", "Ug da Dívida (CODIV/STN)", "Demais"))
+ordenador_pbi <- ordenador_pbi %>% mutate(ug_divida = if_else(`UG Executora Nome Reduzido` == "CODIV/STN", "Ug da Dívida (CODIV/STN)", "Demais"), defesa = if_else(`Órgão UGE - Órgão Máximo Nome` == "MINISTERIO DA DEFESA", "Ministério da Defesa", "Demais"))
 
 pessoas_pbi <- read_csv("pessoas_pbi.csv")
 ```
@@ -83,7 +83,7 @@ Sidebar {.sidebar}
 
 checkboxGroupInput("zzz", "     ", choices = c(), selected = c() )
 
-checkboxGroupInput("auditor", "Auditor Finanças e Controle", choices =sort(unique(pessoas_pbi$auditor_tesouro)), selected =unique(pessoas_pbi$auditor_tesouro) )
+checkboxGroupInput("auditor", "Auditor Federal de Finanças e Controle", choices =sort(unique(pessoas_pbi$auditor_tesouro)), selected =unique(pessoas_pbi$auditor_tesouro) )
 
 checkboxGroupInput("comiss", "Cargo Comissionado", choices =sort(unique(pessoas_pbi$comissionado)), selected =unique(pessoas_pbi$comissionado) )
 
@@ -91,6 +91,8 @@ checkboxGroupInput("militar", "Militar", choices =sort(unique(pessoas_pbi$milita
 
 checkboxGroupInput("exposta", "Pessoa Politicamente Exposta", choices =sort(unique(pessoas_pbi$exposata)), selected =unique(pessoas_pbi$exposata) )
 checkboxGroupInput("ug_divida", "Ug da Dívida (CODIV/STN)", choices =sort(unique(ordenador_pbi$ug_divida)), selected =unique(ordenador_pbi$ug_divida) )
+
+checkboxGroupInput("defesa", "Órgão Máximo", choices =sort(unique(ordenador_pbi$defesa)), selected =unique(ordenador_pbi$defesa) )
 
 # 
 # selectizeInput("UF", "UF", choices = c(unique(ordenador_pbi$`UGE - UF Sigla`)), selected =   c(unique(ordenador_pbi$`UGE - UF Sigla`)), multiInput())
@@ -102,16 +104,19 @@ checkboxGroupInput("ug_divida", "Ug da Dívida (CODIV/STN)", choices =sort(uniqu
 ```{r}
 
 
+
+
 reactive_pessoas <- reactive(pessoas_pbi %>% filter(militar %in% input$militar, comissionado %in% input$comiss , auditor_tesouro %in% input$auditor, exposata %in% input$exposta ))
 
 
 
-reactive_ordenador <- reactive(ordenador_pbi %>% filter(cpf_nome %in% reactive_pessoas()$cpf_nome, ug_divida %in% input$ug_divida))
+reactive_ordenador <- reactive(ordenador_pbi %>% filter(cpf_nome %in% reactive_pessoas()$cpf_nome, ug_divida %in% input$ug_divida, defesa %in% input$defesa))
+
+
 ```
   
 Row {data-height=180}
 -----------------------------------------------------------------------
-
 
 
 ```{r echo=FALSE}
@@ -200,6 +205,7 @@ Row
 
 renderLeaflet( leaflet() %>% addTiles() %>%
   addMarkers(data=reactive_ordenador(),
+             label = str_c( reactive_ordenador()$'UG Executora Nome Reduzido', " - ",reactive_ordenador()$'Órgão UGE Nome' ),
     clusterOptions = markerClusterOptions(),
     clusterId = "quakesCluster") %>%
   addEasyButton(easyButton(
