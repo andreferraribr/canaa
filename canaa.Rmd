@@ -6,6 +6,10 @@ output:
     vertical_layout: fill
 runtime: shiny
 ---
+```{r}
+knitr::opts_chunk$set( echo=FALSE, warning=FALSE, message=FALSE)
+encoding = "Latin1"
+```
 
 
 ```{r}
@@ -28,35 +32,45 @@ library(highcharter)
 library(googlesheets4)
 ```
 ```{r}
-vitimas <- read_excel("vitimas.xlsx")
+vitimas  <- read_delim("Mortes_Violentas.csv",
+    delim = ";", escape_double = FALSE, locale = locale(encoding = "Latin1"),
+    trim_ws = TRUE) %>% clean_names()
 
-vitimas <- vitimas %>% mutate(TipoIncidente = if_else(startsWith(TipoIncidente, "LES"), "LESÃO CORPORAL SEGUIDA DE MORTE", TipoIncidente))
+vitimas <- vitimas %>% mutate(incidente = if_else(startsWith(incidente, "LES"), "LESÃO CORPORAL SEGUIDA DE MORTE", incidente))%>%
+  rename(
+    data = data_do_obito
+    )
+
+
 ```
 
 
 ```{r cars, include=FALSE}
-dados<- read_delim("MICRODADOS_OCORRENCIAS.csv", 
-    delim = ";", escape_double = FALSE, locale = locale(encoding = "latin1"), 
-    trim_ws = TRUE)
-dados <- dados %>% select(Data, Hora, TipoIncidente, Municipio, Bairro)
+dados<- read_delim("MICRODADOS_OCORRENCIAS.csv",
+    delim = ";", escape_double = FALSE, locale = locale(encoding = "Latin1"),
+    trim_ws = TRUE)%>% clean_names()
+dados <- dados %>% select(data, tipo_incidente, municipio)%>%
+  rename(
+    incidente = tipo_incidente
+    )
 
-dados_homicidio <- vitimas %>% select(Data, Hora, TipoIncidente, Municipio, Bairro) 
+dados_homicidio <- vitimas %>% select(data, incidente, municipio) %>% mutate(data = parse_date_time(data, "dmy"))
 
-dados <- rbind(dados, dados_homicidio)
+dados_crimes <- rbind( dados_homicidio,dados) %>% filter(data> "2017-12-31")
 
-dados <- dados %>%mutate(Hora = if_else(Hora == "Indeterminada","00:00:00", Hora))
-
-dados <- dados  %>%  mutate(hora = str_sub(Hora, 1L,2L))
-
-dados_2 <- dados %>% mutate (ano = year (Data)) %>% filter(ano>2017)
-
+# write.csv(dados_crimes,"dados_crimes.csv")
 
 
-# dados <- dados %>% filter(TipoIncidente == "ROUBO: EM RESIDÊNCIA/CONDOMÍNIO")
 
-# dados_react <- reactive( dados %>% filter(Municipio == input$cidade, TipoIncidente == input$tipo))
 
-dados_react <- reactive( dados_2 %>% filter(Municipio == input$cidade, TipoIncidente  %in% c(input$tipo)))
+
+
+
+# dados <- dados %>% filter(incidente == "ROUBO: EM RESIDÊNCIA/CONDOMÍNIO")
+
+# dados_react <- reactive( dados %>% filter(municipio == input$cidade, incidente == input$tipo))
+
+dados_react <- reactive( dados_crimes %>% filter(municipio == input$cidade, incidente  %in% c(input$tipo)))
 
 
 ```
@@ -68,9 +82,9 @@ Column {.sidebar}
 ```{r}
 # sliderInput("hora","hora", min = 0, max = 23, value = c(00,23))
 
-selectInput("cidade","cidade", choices = unique(dados$Municipio), selected = "SANTA TERESA")
+selectInput("cidade","cidade", choices = unique(dados_crimes$municipio), selected = "SANTA TERESA")
 
-checkboxGroupInput("tipo","Tipo de Crime",unique(dados$TipoIncidente), selected = unique(dados$TipoIncidente) )
+checkboxGroupInput("tipo","Tipo de Crime",unique(dados_crimes$incidente), selected = unique(dados_crimes$incidente) )
 ```
 
 
@@ -80,7 +94,7 @@ Row
 
 ```{r}
 
-renderDT(datatable(dados_react() %>% group_by( TipoIncidente) %>% count()))
+renderDT(datatable(dados_react() %>% group_by( incidente) %>% count()))
 
 ```
 
@@ -93,7 +107,7 @@ Row
 ```{r}
 renderPlotly(
   
-  ggplot(dados_react(), aes(year(Data, TipoIncidente), fill = TipoIncidente)) + geom_col()
+  ggplot(dados_react(), aes(year(data), fill = incidente)) + geom_bar()
   
 
   
@@ -104,12 +118,12 @@ renderPlotly(
 ### cidade
 ```{r}
 
-perigosas  <- dados %>% group_by(Municipio) %>% summarise(total = n()) %>% mutate (Municipio = fct_reorder(Municipio,total))
+perigosas  <- dados_crimes %>% group_by(municipio) %>% summarise(total = n()) %>% mutate (municipio = fct_reorder(municipio,total))
  # head(arrange(perigosas,-total),10)
 
 renderPlotly(
 
-    ggplot(head(arrange(perigosas,-total),10), aes(x=Municipio, y=total)) +
+    ggplot(head(arrange(perigosas,-total),10), aes(x=municipio, y=total)) +
     geom_bar(stat="identity", fill="#f68060", alpha=.6, width=.4) +
     coord_flip() +
     xlab("") +
